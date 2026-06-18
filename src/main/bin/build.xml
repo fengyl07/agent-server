@@ -1,0 +1,26 @@
+<project>
+	<target name="checkos">
+		<condition property="isWindows" value="true">
+			<os family="windows" />
+		</condition>
+		<condition property="isUnix" value="true">
+			<os family="unix" />
+		</condition>
+	</target>
+	<target name="linux" depends="checkos" if="isUnix">
+		<property name="front_build" location="${basedir}/src/main/bin/build.sh" />
+		<chmod file="${front_build}" perm="ugo+rx"/>
+		<exec executable="/bin/sh" failonerror="true">
+			<arg value="-c" />
+			<arg value="${front_build}" />
+		</exec>
+	</target>
+
+	<target name="window" depends="checkos" if="isWindows">
+		<property name="front_build" location="${basedir}/src/main/bin/build.bat" />
+		<exec executable="cmd" failonerror="true">
+			<arg value="/c" />
+			<arg value="${front_build}" />
+		</exec>
+	</target>
+</project>

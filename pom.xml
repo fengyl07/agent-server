@@ -1,0 +1,482 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <parent>
+    <groupId>uyun.whale</groupId>
+    <artifactId>parent</artifactId>
+    <version>1.4.7</version>
+  </parent>
+
+  <groupId>uyun.eagle.agent</groupId>
+  <artifactId>alert-agent</artifactId>
+  <version>1.0.0-SNAPSHOT</version>
+  <packaging>jar</packaging>
+
+  <name>alert-agent</name>
+  <url>http://maven.apache.org</url>
+
+  <developers>
+    <developer>
+      <name>yangfei</name>
+      <email>yangfei1@uyunsoft.cn</email>
+    </developer>
+  </developers>
+
+  <!--考虑到window 和linux环境 npm命令格式的问题，使用maven的profile实现动态指定命令-->
+  <profiles>
+    <profile>
+      <id>window</id>
+      <properties>
+        <yarn>window</yarn>
+      </properties>
+      <activation>
+        <activeByDefault>true</activeByDefault>
+      </activation>
+
+    </profile>
+    <profile>
+      <id>linux</id>
+      <properties>
+        <yarn>linux</yarn>
+      </properties>
+    </profile>
+  </profiles>
+
+  <properties>
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+  </properties>
+
+  <dependencies>
+    <!--配置文件远程获取 -->
+    <dependency>
+      <groupId>uyun.whale</groupId>
+      <artifactId>distributed-config</artifactId>
+    </dependency>
+
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter</artifactId>
+    </dependency>
+
+    <dependency>
+      <groupId>uyun.bird.tenant</groupId>
+      <artifactId>tenant-api</artifactId>
+      <exclusions>
+        <exclusion>
+          <groupId>de.javakaffee</groupId>
+          <artifactId>kryo-serializers</artifactId>
+        </exclusion>
+      </exclusions>
+    </dependency>
+
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-data-jpa</artifactId>
+    </dependency>
+
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-security</artifactId>
+    </dependency>
+
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-test</artifactId>
+      <scope>test</scope>
+    </dependency>
+
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-actuator</artifactId>
+    </dependency>
+
+    <!-- 集成租户语言包 -->
+    <dependency>
+      <groupId>uyun.whale</groupId>
+      <artifactId>i18n-impl</artifactId>
+      <exclusions>
+        <exclusion>
+          <groupId>com.google.guava</groupId>
+          <artifactId>guava</artifactId>
+        </exclusion>
+      </exclusions>
+    </dependency>
+
+
+    <dependency>
+      <groupId>de.javakaffee</groupId>
+      <artifactId>kryo-serializers</artifactId>
+    </dependency>
+
+    <dependency>
+      <groupId>org.modelmapper</groupId>
+      <artifactId>modelmapper</artifactId>
+    </dependency>
+
+    <dependency>
+      <groupId>org.projectlombok</groupId>
+      <artifactId>lombok</artifactId>
+    </dependency>
+
+    <dependency>
+      <groupId>com.alibaba</groupId>
+      <artifactId>druid-spring-boot-starter</artifactId>
+    </dependency>
+
+    <!-- 数据权限 -->
+    <dependency>
+      <groupId>uyun.whale.security</groupId>
+      <artifactId>acl-jdbc</artifactId>
+      <exclusions>
+        <exclusion>
+          <groupId>uyun.whale.security</groupId>
+          <artifactId>auth-core</artifactId>
+        </exclusion>
+      </exclusions>
+    </dependency>
+
+    <!-- dubbo 应用产品注册，权限设置，权限验证  dubbo与 rest 只能引用一个-->
+    <dependency>
+      <groupId>uyun.whale</groupId>
+      <artifactId>own-consumer-spring-boot-starter</artifactId>
+    </dependency>
+
+    <!-- restfull 应用产品注册，权限设置，权限验证 dubbo与 rest 只能引用一个 -->
+    <!--<dependency>
+      <groupId>uyun.whale</groupId>
+      <artifactId>third-consumer-spring-boot-starter</artifactId>
+    </dependency>-->
+
+    <!-- store res API -->
+    <dependency>
+      <groupId>uyun.pacific</groupId>
+      <artifactId>pacific-resource-api</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>uyun.pacific</groupId>
+      <artifactId>pacific-i18n</artifactId>
+    </dependency>
+
+    <!--数据库版本控制-->
+    <dependency>
+      <groupId>org.flywaydb</groupId>
+      <artifactId>flyway-core</artifactId>
+    </dependency>
+
+    <dependency>
+      <groupId>com.h2database</groupId>
+      <artifactId>h2</artifactId>
+      <scope>runtime</scope>
+    </dependency>
+
+    <!--引入数据库驱动包 -->
+    <dependency>
+      <groupId>mysql</groupId>
+      <artifactId>mysql-connector-java</artifactId>
+    </dependency>
+
+    <dependency>
+      <groupId>io.swagger</groupId>
+      <artifactId>swagger-annotations</artifactId>
+    </dependency>
+
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-web</artifactId>
+      <exclusions>
+        <exclusion>
+          <groupId>org.springframework.boot</groupId>
+          <artifactId>spring-boot-starter-tomcat</artifactId>
+        </exclusion>
+      </exclusions>
+    </dependency>
+
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-undertow</artifactId>
+    </dependency>
+  </dependencies>
+
+  <build>
+    <finalName>alertagent-${project.version}</finalName>
+    <resources>
+      <resource>
+        <directory>src/main/resources</directory>
+        <filtering>true</filtering>
+      </resource>
+      <resource>
+        <directory>src/main/java</directory>
+        <excludes>
+          <exclude>**/*.java</exclude>
+        </excludes>
+      </resource>
+    </resources>
+    <plugins>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-assembly-plugin</artifactId>
+        <executions>
+          <execution>
+            <id>build-bin</id>
+            <phase>package</phase>
+            <goals>
+              <goal>single</goal>
+            </goals>
+            <configuration>
+              <descriptors>
+                <descriptor>assembly.xml</descriptor>
+              </descriptors>
+              <finalName>AlertAgent-V2.0.R16-all</finalName>
+              <appendAssemblyId>false</appendAssemblyId>
+              <attach>false</attach>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-dependency-plugin</artifactId>
+        <executions>
+          <execution>
+            <id>copy-dependencies</id>
+            <phase>test</phase>
+            <goals>
+              <goal>copy-dependencies</goal>
+            </goals>
+            <configuration>
+              <outputDirectory>target/lib</outputDirectory>
+              <excludeTransitive>false</excludeTransitive>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+      <plugin>
+        <groupId>io.swagger</groupId>
+        <artifactId>swagger-codegen-maven-plugin</artifactId>
+        <executions>
+          <execution>
+            <id>spring-front</id>
+            <phase>generate-sources</phase>
+            <goals>
+              <goal>generate</goal>
+            </goals>
+            <configuration>
+              <inputSpec>src/main/resources/api/alertagent-frontapi.yml</inputSpec>
+              <language>spring</language>
+              <modelPackage>uyun.eagle.agent.alertagent.frontapi.vo</modelPackage>
+              <apiPackage>uyun.eagle.agent.alertagent.frontapi</apiPackage>
+              <output>target/generated-sources</output>
+              <configOptions>
+                <interfaceOnly>true</interfaceOnly>
+                <hideGenerationTimestamp>true</hideGenerationTimestamp>
+              </configOptions>
+            </configuration>
+          </execution>
+          <execution>
+            <id>spring-service</id>
+            <phase>generate-sources</phase>
+            <goals>
+              <goal>generate</goal>
+            </goals>
+            <configuration>
+              <inputSpec>src/main/resources/api/alertagent-serviceapi.yml</inputSpec>
+              <language>spring</language>
+              <modelPackage>uyun.eagle.agent.alertagent.serviceapi.dto</modelPackage>
+              <apiPackage>uyun.eagle.agent.alertagent.serviceapi</apiPackage>
+              <output>target/generated-sources</output>
+              <configOptions>
+                <interfaceOnly>true</interfaceOnly>
+                <serializableModel>true</serializableModel>
+                <hideGenerationTimestamp>true</hideGenerationTimestamp>
+              </configOptions>
+            </configuration>
+          </execution>
+          <execution>
+            <id>spring-open</id>
+            <phase>generate-sources</phase>
+            <goals>
+              <goal>generate</goal>
+            </goals>
+            <configuration>
+              <inputSpec>src/main/resources/api/alertagent-openapi.yml</inputSpec>
+              <language>spring</language>
+              <modelPackage>uyun.eagle.agent.alertagent.openapi.dto</modelPackage>
+              <apiPackage>uyun.eagle.agent.alertagent.openapi</apiPackage>
+              <output>target/generated-sources</output>
+              <configOptions>
+                <interfaceOnly>true</interfaceOnly>
+                <hideGenerationTimestamp>true</hideGenerationTimestamp>
+              </configOptions>
+            </configuration>
+          </execution>
+          <execution>
+            <id>html-front</id>
+            <phase>generate-sources</phase>
+            <goals>
+              <goal>generate</goal>
+            </goals>
+            <configuration>
+              <inputSpec>src/main/resources/api/alertagent-frontapi.yml</inputSpec>
+              <language>html2</language>
+              <output>target/api/front</output>
+            </configuration>
+          </execution>
+          <execution>
+            <id>html-service</id>
+            <phase>generate-sources</phase>
+            <goals>
+              <goal>generate</goal>
+            </goals>
+            <configuration>
+              <inputSpec>src/main/resources/api/alertagent-serviceapi.yml</inputSpec>
+              <language>html2</language>
+              <output>target/api/service</output>
+            </configuration>
+          </execution>
+          <execution>
+            <id>html-open</id>
+            <phase>generate-sources</phase>
+            <goals>
+              <goal>generate</goal>
+            </goals>
+            <configuration>
+              <inputSpec>src/main/resources/api/alertagent-openapi.yml</inputSpec>
+              <language>html2</language>
+              <output>target/api/open</output>
+            </configuration>
+          </execution>
+          <execution>
+            <id>javascript</id>
+            <phase>generate-sources</phase>
+            <goals>
+              <goal>generate</goal>
+            </goals>
+            <configuration>
+              <inputSpec>src/main/resources/api/alertagent-frontapi.yml</inputSpec>
+              <language>javascript</language>
+              <output>target/generated-sources/javascript</output>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-jar-plugin</artifactId>
+        <configuration>
+          <excludes>
+            <exclude>/*.yaml</exclude>
+            <exclude>/*.yml</exclude>
+            <exclude>/logback-spring.xml</exclude>
+            <exclude>/api/**</exclude>
+            <exclude>/i18n/**</exclude>
+          </excludes>
+          <archive>
+            <addMavenDescriptor>false</addMavenDescriptor>
+          </archive>
+        </configuration>
+        <executions>
+          <execution>
+            <id>serviceapi</id>
+            <goals>
+              <goal>jar</goal>
+            </goals>
+            <phase>package</phase>
+            <configuration>
+              <classifier>serviceapi</classifier>
+              <includes>
+                <include>**/serviceapi/*</include>
+                <include>**/serviceapi/dto/*</include>
+              </includes>
+            </configuration>
+          </execution>
+          <execution>
+            <id>openapi</id>
+            <goals>
+              <goal>jar</goal>
+            </goals>
+            <phase>package</phase>
+            <configuration>
+              <classifier>openapi</classifier>
+              <includes>
+                <include>**/openapi/*</include>
+                <include>**/openapi/dto/*</include>
+              </includes>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-antrun-plugin</artifactId>
+        <executions>
+          <execution>
+            <id>process-src</id>
+            <phase>process-sources</phase>
+            <goals>
+              <goal>run</goal>
+            </goals>
+            <configuration>
+              <target>
+                <mkdir dir="src/main/frontend/src/utils/swagger-api"/>
+
+                <copy todir="src/main/java" overwrite="true">
+                  <fileset dir="target/generated-sources/src/main/java"/>
+                </copy>
+                <copy todir="target/api/front/javascript" overwrite="true">
+                  <fileset dir="target/generated-sources/javascript/src"/>
+                </copy>
+                <copy todir="src/main/frontend/src/utils/swagger-api" overwrite="true">
+                  <fileset dir="target/generated-sources/javascript/src"/>
+                </copy>
+
+                <copy file="src/main/resources/api/alertagent-frontapi.yml"
+                      tofile="target/api/front/alertagent-frontapi.yml"/>
+                <copy file="src/main/resources/api/alertagent-serviceapi.yml"
+                      tofile="target/api/service/alertagent-serviceapi.yml"/>
+                <copy file="src/main/resources/api/alertagent-openapi.yml"
+                      tofile="target/api/open/alertagent-openapi.yml"/>
+
+                <copy file="target/api/front/index.html" tofile="target/api/front/alertagent-frontapi.html"/>
+                <copy file="target/api/service/index.html"
+                      tofile="target/api/service/alertagent-serviceapi.html"/>
+                <copy file="target/api/open/index.html" tofile="target/api/open/alertagent-openapi.html"/>
+
+                <delete includeEmptyDirs="true">
+                  <fileset dir="target/generated-sources"/>
+                  <fileset dir="target/api" includes="**/index.html"/>
+                </delete>
+              </target>
+            </configuration>
+          </execution>
+          <execution>
+            <id>rename-jar</id>
+            <phase>package</phase>
+            <goals>
+              <goal>run</goal>
+            </goals>
+            <configuration>
+              <target>
+                <copy file="target/alertagent-${project.version}-serviceapi.jar"
+                      tofile="target/api/service/alertagent-serviceapi-${project.version}.jar"/>
+                <copy file="target/alertagent-${project.version}-openapi.jar"
+                      tofile="target/api/open/alertagent-openapi-${project.version}.jar"/>
+              </target>
+            </configuration>
+          </execution>
+          <execution>
+            <phase>prepare-package</phase>
+            <goals>
+              <goal>run</goal>
+            </goals>
+            <configuration>
+              <target>
+                <ant antfile="src/main/bin/build.xml" target="${yarn}"></ant>
+              </target>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+    </plugins>
+  </build>
+</project>

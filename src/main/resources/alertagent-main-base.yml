@@ -1,0 +1,236 @@
+# 自定义业务配置项
+biz:
+  # 是否进行产品注册以及权限注册，token 验证,url访问控制，默认true ,false 不进行注册以及权限注册，token 验证,url访问控制
+  enable: true
+  app:
+    # 应用编码（全大写、首字母大写或带数字，如：CMDB、Automation、APP360、VideoMon）
+    code: AlertAgent
+    lower-code: alertagent
+    # 英文描述信息
+    description: ${biz.app.lower-code} app
+    # 中文描述信息
+    descriptionCn: 基于Springboot&Dubbo的示例程序
+    auth-codes:
+      - code: task_assign
+        name: Task assignment
+        nameCN: 任务分配
+        parentCode:
+    security:
+      # 是否跳过openApi apikey效验, third-consumer-spring-boot-starter ,own-consumer-spring-boot-starter 都会生效
+      enabled: false
+      # 需要验证登录的地址
+      validation-path: /alertagent/frontapi/v1/**
+      #不需要验证登录地址
+      ineffectiveness-path: /, /static/**, /tenant/**, /frontend/**, /actuator/**,/metrics/**, /h2/**, /actuator/health, /favicon.ico,/test/hello, /alertagent/frontapi/v1/agent/**
+
+  module:
+    # 模块编码（全部小写，单模块应用为 应用编码小写-main ）
+    code: ${biz.app.lower-code}-main
+    # 模块中文名称
+    name: 告警智能研判Agent
+    description: ${lowerCode}主模块
+    main-class: uyun.eagle.agent.alertagent.StartApplication
+    # 版本信息（以“.”分割四位数字组成）
+    version: 2.0.16.40
+    # 当前支持 [main, compute, normal] 三个枚举值
+    # main：产品主模块，运维管理平台将以此模块作为安装切点进行依赖分析并完成所在产品的安装，每个产品只有一个main模块，一般为nginx或web前端
+    # compute：计算模块
+    # normal：常规模块
+    # 单模块默认为 main
+    type: main
+    # 是否支持扩容，默认为true（可选）
+    scalable: true
+    # 是否需要Platform Nginx进行方向代理或负载均衡，
+    # 可选项，如果需要进行代理，请按如下方式进行配置。
+    enable_reverse_proxy:
+      upstream: |
+        upstream ${biz.app.lower-code} {
+        <#list hosts as host>
+          # 在此处追加对应Server配置，修改API接口
+          server ${host.ip}:${server.port};
+        </#list>
+           check interval=5000 rise=2 fall=3 timeout=5000 type=http;
+           check_http_send "GET /actuator/health HTTP/1.0\r\n\r\n";
+           check_http_expect_alive http_2xx;
+        }
+        upstream ${biz.app.lower-code}-api {
+        <#list hosts as host>
+          # 在此处追加对应Server配置，修改API接口
+          server ${host.ip}:${server.port};
+        </#list>
+        }
+      location: |
+        location /${biz.app.lower-code}/ {
+          proxy_pass http://${biz.app.lower-code}/;
+        }
+        location /${biz.app.lower-code}/frontapi/v1 {
+          proxy_pass http://${biz.app.lower-code}-api;
+        }
+        location /${biz.app.lower-code}/openapi/v1 {
+          proxy_pass http://${biz.app.lower-code}-api;
+        }
+    # 需要关闭的防火墙端口
+    firewall_port: ${server.port},${dubbo.protocol.port}
+    # 数据库账户
+    database:
+      account:
+        - type: mysql
+          schema: ${biz.app.lower-code}
+          username: ${biz.app.lower-code}
+    # 依赖信息，该应用依赖的其他模块，包括DB、中间件等（可为空）
+    dependencies:
+      - module: platform-jdk
+        version: 2.0.0.0
+      - module: platform-mysql
+        version: 2.0.0.0
+      - module: platform-apollo-adminservice
+        version: 2.0.0.0
+      - module: platform-apollo-portal
+        version: 2.0.0.0
+      - module: platform-apollo-configservice
+        version: 2.0.0.0
+      - module: platform-tenant
+        version: 2.0.16.70
+    # 追加docker相关参数配置声明
+    docker:
+      deployment:
+        # 镜像类型：java|python|node|all
+        img: java
+        # 默认为 deployment，如果部署过程是有状态，如启动时需初始化数据、leader选举等请配置为 statefulset
+        kind: deployment
+        # 容器部署后是否允许扩缩容处理，默认为true
+        scalable: true
+    # 此处修改，每次重启后生效，可以在omp界面进行修改，以界面修改为准。
+    parameters:
+      # 启动参数，该处声明的参数将在模块安装成功、启动之前由 OMP 调用 command 中的 config.sh 脚本配置到启停管理脚本中
+      bootstrap:
+        - key: jvm                                                                                 # 参数key
+          val: -Xmx1024m -Xms1024m -Xss256K -XX:MaxMetaspaceSize=256m                               # 默认值
+    # 运行参数
+    runtime_params:
+      # cpu核数
+      cpu: 1
+      # 最大运行内存（unit: M）
+      mem: 1024
+      # 所需磁盘空间（unit: G）
+      disk: 50
+    web_config:
+      metrics_base_url: 'http://${host.ip}:${server.port}}/metrics'
+
+# Spring 公共配置
+spring:
+  application:
+    name: ${biz.module.code}
+  profiles:
+    active: dev
+  datasource:
+    type: com.alibaba.druid.pool.DruidDataSource
+    maxActive: 20
+    initialSize: 1
+    maxWait: 60000
+    minIdle: 1
+    minEvictableIdleTimeMillis: 300000
+    validationQuery: select 'x'
+    testWhileIdle: true
+    testOnBorrow: false
+    testOnReturn: false
+    poolPreparedStatements: true
+    maxOpenPreparedStatements: 20
+  resources:
+    static-locations: file:../static/
+  mvc:
+    throw-exception-if-no-handler-found: true
+  servlet:
+    multipart:
+      max-file-size: -1
+      max-request-size: -1
+  # jpa相关配置
+  jpa:
+    show-sql: true
+    hibernate:
+      # 启动时自动根据实体类创建table，如存在则作更新处理
+      ddl-auto: update
+      # 采用Hibernate命名策略
+      naming-strategy: org.hibernate.cfg.ImprovedNamingStrategy
+  #合并基线
+  flyway:
+    baseline-on-migrate: true
+
+server:
+  port: 8090
+  #此处配置为4核16G 配置具体请根据实际情况进行调优
+  undertow:
+    # 设置IO线程数, 它主要执行非阻塞的任务,它们会负责多个连接, 默认设置每个CPU核心一个线程
+    io-threads: 16
+    # 阻塞任务线程池, 当执行类似servlet请求阻塞操作, undertow会从这个线程池中取得线程,它的值设置取决于系统的负载
+    worker-threads: 300
+    # 以下的配置会影响buffer,这些buffer会用于服务器连接的IO操作,有点类似netty的池化内存管理
+    # 每块buffer的空间大小,越小的空间被利用越充分
+    buffer-size: 1024
+    # 是否分配的直接内存
+    direct-buffers: true
+    accesslog:
+      enabled: true
+      pattern: common
+      prefix: undertow_log.
+      suffix: log
+      dir: ${work.dir}/logs
+      rotate: true
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "*"
+
+# ===== 告警智能研判 Agent 相关配置（Phase 1）=====
+# Alert OpenAPI 接入：base-url / apikey 在测试环境由 Apollo 覆盖（见 *-config-*.yml），此处仅占位默认值
+alert:
+  openapi:
+    base-url: http://alert-gateway-dev/alert/openapi/v2
+    apikey: REPLACE_WITH_ALERT_APIKEY
+    connect-timeout: 5000
+    read-timeout: 30000
+
+# LLM 接入占位（Phase 1b 研判用，当前未启用）；指向测试环境 Ollama / DeepSeek / 模型网关（OpenAI 兼容）
+llm:
+  enabled: false
+  base-url: http://CHANGE_ME/v1
+  api-key: CHANGE_ME
+  model: deepseek-chat
+
+#配置默认命名，空间
+whale:
+  distributed:
+    config:
+      app:
+        id: ${biz.app.lower-code}
+      server:
+        url: http://10.1.63.31:7546
+      namespaces: common.properties,${biz.module.code}-config.yml
+      bootstrap:
+        enabled: true
+        eagerLoad:
+          enabled: true
+
+# Dubbo相关配置
+dubbo:
+  application:
+    name: ${biz.module.code}
+  registry:
+    check: false
+    timeout: 30000
+  protocol:
+    # 指定通信协议
+    name: dubbo
+    # 通信端口，这里指的是与消费者间的通信协议与端口
+    port: 20890
+  provider:
+    # 配置全局调用服务超时时间
+    timeout: 30000
+    # 重试3次
+    retries: 3
+    delay: -1
+  consumer:
+    check: false
+    timeout: 3000

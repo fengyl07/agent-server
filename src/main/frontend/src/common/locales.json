@@ -1,0 +1,41 @@
+[
+  ["key", "zh_CN", "en_US"],
+  [
+    "menu-authority-management",
+    "权限设置",
+    "authority"
+  ],
+  ["menu-dashboard", "仪表盘", "Dashboard"],
+  [
+    "menu-index",
+    "首页",
+    "Home"
+  ],
+  ["menu-task", "任务管理", "Task Management"],
+  ["menu-todo", "我的待办", "my todo"],
+  ["rota-add-task", "添加任务", "add the task"],
+  ["rota-completed", "完成", "completed"],
+  ["rota-duty-staff", "值班人员", "duty staff"],
+  ["rota-nostaff-duty", "暂无值班人员", "No staff on duty"],
+  ["rota-notable-duty", "暂无值班表", "No duty table"],
+  ["rota-todo-calendar", "值班日历", "duty calendar"],
+  ["rota-todo-input", "请输入待办事情", "Please enter your to-do list"],
+  ["rota-todo-plan", "待办计划", "Todo plan"],
+  ["task-deal", "处理人", "dealUser"],
+  ["task-description", "按任务描述查询", "inquire by task description"],
+  [
+    "task-distribution",
+    "分配",
+    "distribution"
+  ],
+  ["task-distribution-title", "分配任务", "distribution task"],
+  ["task_created_time", "创建时间", "create time"],
+  ["task_creator", "创建人", "creator"],
+  ["task_deal", "处理人", "deal person"],
+  ["task_deal_time", "处理时间", "deal time"],
+  ["task_delete", "删除", "delete"],
+  ["task_description", "任务描述", "task description"],
+  ["task_operation", "操作", "opertion"],
+  ["task_status", "状态", "status"],
+  ["task_sure_delete", "是否删除", "sure to delete"]
+]

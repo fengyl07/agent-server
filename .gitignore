@@ -1,0 +1,31 @@
+/target/
+/logs/
+
+# dependencies
+/src/main/frontend/node_modules
+
+
+# production
+/src/main/frontend/dist
+/src/main/frontend/build
+/src/main/frontend/coverage
+
+# misc
+/src/main/frontend/.DS_Store
+/src/main/frontend/*.log
+/src/main/frontend/npm-debug.log*
+/src/main/frontend/yarn-debug.log*
+/src/main/frontend/yarn-error.log
+
+/coverage
+.idea
+
+.h2
+.classpath
+.project
+.settings
+
+.idea
+*.iws
+*.iml
+*.ipr

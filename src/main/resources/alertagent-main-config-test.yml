@@ -1,0 +1,23 @@
+spring:
+  datasource:
+    url: jdbc:mysql://${mysql.ip}:${mysql.port}/${biz.app.lower-code}?createDatabaseIfNotExist=true&useUnicode=true&characterEncoding=UTF-8&zeroDateTimeBehavior=convertToNull&allowMultiQueries=true&useSSL=true&verifyServerCertificate=false
+    username: ${mysql.username.alertagent}
+    password: ${mysql.password.alertagent}
+    driver-class-name: com.mysql.jdbc.Driver
+
+dubbo:
+  registry:
+    address: ${zk.url}
+
+# Alert OpenAPI 接入（测试环境）：以下变量在 Apollo 的 common.properties / alertagent-main-config.yml 中配置
+alert:
+  openapi:
+    base-url: ${alert.openapi.baseurl}
+    apikey: ${alert.openapi.apikey}
+
+# LLM 接入（测试环境，Phase 1b 启用）
+llm:
+  enabled: ${llm.enabled:false}
+  base-url: ${llm.baseurl:http://CHANGE_ME/v1}
+  api-key: ${llm.apikey:CHANGE_ME}
+  model: ${llm.model:deepseek-chat}

@@ -1,0 +1,249 @@
+swagger: '2.0'
+info:
+  title: alertagent FrontAPI
+  version: 2.0.0
+  description: alertagent FrontAPI
+  license:
+    name: 优云软件
+    url: 'https://www.uyun.cn'
+
+# 上下文路径（禁止通过 server.servlet.context-path 配置）
+basePath: '/alertagent/frontapi/v1'
+
+# API类型（forntapi | serviceapi | openapi）
+x-api-type: frontapi
+
+# 应用类型，与 spring.application.name 配置保持一致
+x-application-name: alertagent-main
+
+schemes:
+  - http
+
+produces:
+  - application/json
+
+tags:
+  - name: rotatodo
+    description: 值班待办
+
+paths:
+  '/dutys/query':
+    get:
+      operationId: queryDutys
+      summary: '获取某天的排班信息'
+      description: '获取某天的排班信息'
+      tags:
+        - rotatodo
+      parameters:
+        - name: dutyDate
+          in: query
+          description: '排班日期'
+          required: true
+          type: integer
+          format: int64
+      responses:
+        '200':
+          description: 成功
+          schema:
+            type: array
+            items:
+              $ref: '#/definitions/DutyVO'
+        400:
+          description: 失败
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+  # path必须以资源名词开头
+
+  '/todos/create':
+    post:
+      operationId: insertTodo
+      summary: '创建待办事项'
+      description: '创建待办事项'
+      tags:
+        - rotatodo
+      parameters:
+        - name: createTodo
+          in: body
+          description: '待办事项'
+          schema:
+            $ref: '#/definitions/TodoVO'
+      responses:
+        '200':
+          description: 成功
+          schema:
+            $ref: '#/definitions/TodoVO'
+        500:
+          description: 失败
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+  '/todos/update':
+    post:
+      operationId: updateTodoById
+      summary: '更新待办事项'
+      description: '更新待办事项'
+      tags:
+        - rotatodo
+      parameters:
+        - name: updateTodo
+          in: body
+          description: '待办事项'
+          schema:
+            $ref: '#/definitions/TodoVO'
+      responses:
+        '200':
+          description: 成功
+          schema:
+            $ref: '#/definitions/TodoVO'
+        500:
+          description: 失败
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+  '/todos/query':
+    get:
+      operationId: selectTodoFindAll
+      summary: '查询待办事项'
+      description: '查询待办事项'
+      tags:
+        - rotatodo
+      parameters:
+        - name: dutyDate
+          in: query
+          description: '排班日期'
+          required: true
+          type: integer
+          format: int64
+      responses:
+        '200':
+          description: 成功
+          schema:
+            type: array
+            items:
+              $ref: '#/definitions/TodoVO'
+        400:
+          description: 失败
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+  '/todos/search':
+    get:
+      operationId: queryByContent
+      summary: '根据条件查询待办事项'
+      description: '根据条件查询待办事项'
+      tags:
+        - rotatodo
+      parameters:
+        - name: dutyDate
+          in: query
+          description: '排班日期'
+          required: true
+          type: integer
+          format: int64
+        - name: content
+          in: query
+          description: '任务内容'
+          required: true
+          type: string
+      responses:
+        '200':
+          description: 成功
+          schema:
+            type: array
+            items:
+              $ref: '#/definitions/TodoVO'
+        400:
+          description: 失败
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+  '/todos/delete':
+    post:
+      operationId: deleteTodoById
+      summary: '删除待办事项'
+      description: '删除待办事项'
+      tags:
+        - rotatodo
+      parameters:
+        - name: id
+          in: query
+          description: '待办事项ID'
+          required: true
+          type: integer
+      responses:
+        '200':
+          description: 成功
+          schema:
+            $ref: '#/definitions/TodoVO'
+        500:
+          description: 失败
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+
+definitions:
+  ErrorResponse:
+    type: object
+    required:
+      - error
+    properties:
+      error:
+        $ref: '#/definitions/Error'
+  Error:
+    type: object
+    required:
+      - code
+      - message
+    properties:
+      code:
+        type: string
+        description: 错误编码
+        example: ERR-500
+      message:
+        type: string
+        description: 错误消息
+        example: 用户名称不能为空
+      path:
+        type: string
+        description: 请求路径
+        example: '/v2/cloud/save'
+      time:
+        type: string
+        description: 出错时间
+        example: '2019-03-23 09:11:20'
+  DutyVO:
+    type: object
+    properties:
+      shiftName:
+        type: string
+        description: '排班名称'
+      users:
+        type: array
+        description: '排班人员'
+        items:
+          type: string
+  TodoVO:
+    type: object
+    properties:
+      id:
+        type: integer
+        description: 'id'
+      createUser:
+        type: string
+        description: '创建用户'
+      dealsUser:
+        type: string
+        description: '处理用户'
+      hasCompleted:
+        type: boolean
+        description: '是否已经完成'
+      createTime:
+        type: integer
+        format: int64
+        description: '创建时间'
+      content:
+        type: string
+        description: '待办内容'
+      todoTime:
+        type: integer
+        format: int64
+        description: '待办时间'
+      dealsTime:
+        type: integer
+        format: int64
+        description: '处理时间'

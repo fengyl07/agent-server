@@ -1,0 +1,7 @@
+500=内部错误
+400=错误请求,或请求参数错误
+404=请求地址不存在
+
+alertagent.common.args.required=参数 ''{0}'' 缺失
+alertagent.common.args.invalid=参数 ''{0}'' 的值（''{1}''）非法
+alertagent.todo.acl.not_authorized_acl=当前记录''{0}''未被授予''{1}''权限

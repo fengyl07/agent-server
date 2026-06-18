@@ -1,0 +1,16 @@
+spring:
+  datasource:
+    url: jdbc:mysql://${mysql.ip}:${mysql.port}/${biz.app.lower-code}?createDatabaseIfNotExist=true&useUnicode=true&characterEncoding=UTF-8&zeroDateTimeBehavior=convertToNull&allowMultiQueries=true&useSSL=true&verifyServerCertificate=false
+    username: ${mysql.username.alertagent}
+    password: ${mysql.password.alertagent}
+    driver-class-name: com.mysql.jdbc.Driver
+# 自定义业务配置项
+biz:
+  app:
+    security:
+      # 提供访问apikey 供sdk调用租户openApi使用,使用third-consumer-spring-boot-starter 产品权限注册组件需要提供，该组件使用openApi方式进行权限，
+      # 产品信息注册，顾需要提供apikey, 应用本身提供给外部调用无需提供apiKey.
+      api-key: cf83434c997511ea8866005056b906d7
+dubbo:
+  registry:
+    address: ${zk.url}

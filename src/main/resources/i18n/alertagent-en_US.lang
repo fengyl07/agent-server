@@ -1,0 +1,7 @@
+500=Internal Server Error
+400=Bad Request or ArgumentException
+404=Request address not Find
+
+alertagent.common.args.required=Argument ''{0}'' is required
+alertagent.common.args.invalid=Value ''{1}'' is invalid for argument ''{0}''
+alertagent.todo.acl.not_authorized_acl=Not authorized to perform ''{1}'' on object ''{0}''
