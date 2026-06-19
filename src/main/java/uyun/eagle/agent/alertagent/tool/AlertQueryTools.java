@@ -11,9 +11,8 @@ import uyun.eagle.agent.alertagent.tool.dto.AlertBrief;
 import uyun.eagle.agent.alertagent.tool.dto.AlertCount;
 
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.time.LocalTime;
-import java.time.format.DateTimeFormatter;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -29,7 +28,6 @@ import java.util.Map;
 @Component
 public class AlertQueryTools {
 
-    private static final DateTimeFormatter TIME_FMT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
     private static final int DEFAULT_PAGE_SIZE = 20;
     private static final int DEFAULT_SIMILAR_TOP_N = 10;
 
@@ -45,16 +43,18 @@ public class AlertQueryTools {
      */
     public AlertCount countTodayAlerts(String status, String severity) {
         LocalDate today = LocalDate.now();
-        String begin = LocalDateTime.of(today, LocalTime.MIN).format(TIME_FMT);
-        String end = LocalDateTime.of(today, LocalTime.MAX.withNano(0)).format(TIME_FMT);
+        ZoneId zone = ZoneId.systemDefault();
+        // Alert OpenAPI 的 begin/end 要求毫秒时间戳（后端 IncidentQueryParam.begin/end 为 Long）
+        long begin = today.atStartOfDay(zone).toInstant().toEpochMilli();
+        long end = today.atTime(LocalTime.MAX).atZone(zone).toInstant().toEpochMilli();
 
         Map<String, String> params = new LinkedHashMap<>();
         params.put("pageNo", "1");
         params.put("pageSize", "1");
-        params.put("begin", begin);
-        params.put("end", end);
-        putIfNotBlank(params, "status", status);
-        putIfNotBlank(params, "severity", severity);
+        params.put("begin", String.valueOf(begin));
+        params.put("end", String.valueOf(end));
+        putIfInteger(params, "status", status);
+        putIfInteger(params, "severity", severity);
 
         JsonObject rsp = alertOpenApiClient.queryAlerts(params);
         AlertCount count = new AlertCount();
@@ -77,8 +77,8 @@ public class AlertQueryTools {
         Map<String, String> params = new LinkedHashMap<>();
         params.put("pageNo", String.valueOf(pageNo <= 0 ? 1 : pageNo));
         params.put("pageSize", String.valueOf(pageSize <= 0 ? DEFAULT_PAGE_SIZE : pageSize));
-        putIfNotBlank(params, "severity", severity);
-        putIfNotBlank(params, "status", status);
+        putIfInteger(params, "severity", severity);
+        putIfInteger(params, "status", status);
         putIfNotBlank(params, "entityName", entityName);
 
         JsonObject rsp = alertOpenApiClient.queryAlerts(params);
@@ -191,6 +191,28 @@ public class AlertQueryTools {
     private static void putIfNotBlank(Map<String, String> params, String key, String value) {
         if (value != null && !value.trim().isEmpty()) {
             params.put(key, value.trim());
+        }
+    }
+
+    /**
+     * 仅当 value 是纯数字时才下传。
+     *
+     * <p>Alert 后端 {@code IncidentQueryParam} 的 severity/status 是 Integer，
+     * 传中文/英文（如“严重”“已恢复”）会触发 400 类型转换异常，故非数字一律跳过。
+     */
+    private static void putIfInteger(Map<String, String> params, String key, String value) {
+        if (value == null) {
+            return;
+        }
+        String v = value.trim();
+        if (v.isEmpty()) {
+            return;
+        }
+        try {
+            Integer.parseInt(v);
+            params.put(key, v);
+        } catch (NumberFormatException e) {
+            log.warn("[AlertQueryTools] 参数 {} 非数字，已忽略: {}", key, v);
         }
     }
 

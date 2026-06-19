@@ -15,7 +15,6 @@ import uyun.eagle.agent.alertagent.openapi.dto.Error;
 /**
  * ErrorResponse
  */
-@javax.annotation.Generated(value = "class io.swagger.codegen.languages.SpringCodegen", date = "2019-06-14T15:08:34.096+08:00")
 
 
 public class ErrorResponse   {

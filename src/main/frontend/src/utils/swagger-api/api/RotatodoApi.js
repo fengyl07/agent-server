@@ -1,6 +1,6 @@
 /**
- * demo FrontAPI
- * demo FrontAPI
+ * alertagent FrontAPI
+ * alertagent FrontAPI
  *
  * OpenAPI spec version: 2.0.0
  * 
@@ -31,10 +31,10 @@
     module.exports = factory(require('../ApiClient'), require('../model/TodoVO'), require('../model/ErrorResponse'), require('../model/DutyVO'));
   } else {
     // Browser globals (root is window)
-    if (!root.DemoFrontApi) {
-      root.DemoFrontApi = {};
+    if (!root.AlertagentFrontApi) {
+      root.AlertagentFrontApi = {};
     }
-    root.DemoFrontApi.RotatodoApi = factory(root.DemoFrontApi.ApiClient, root.DemoFrontApi.TodoVO, root.DemoFrontApi.ErrorResponse, root.DemoFrontApi.DutyVO);
+    root.AlertagentFrontApi.RotatodoApi = factory(root.AlertagentFrontApi.ApiClient, root.AlertagentFrontApi.TodoVO, root.AlertagentFrontApi.ErrorResponse, root.AlertagentFrontApi.DutyVO);
   }
 }(this, function(ApiClient, TodoVO, ErrorResponse, DutyVO) {
   'use strict';

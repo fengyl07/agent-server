@@ -1,6 +1,6 @@
 /**
- * demo FrontAPI
- * demo FrontAPI
+ * alertagent FrontAPI
+ * alertagent FrontAPI
  *
  * OpenAPI spec version: 2.0.0
  * 
@@ -31,10 +31,10 @@
     module.exports = factory(require('../ApiClient'), require('./Error'));
   } else {
     // Browser globals (root is window)
-    if (!root.DemoFrontApi) {
-      root.DemoFrontApi = {};
+    if (!root.AlertagentFrontApi) {
+      root.AlertagentFrontApi = {};
     }
-    root.DemoFrontApi.ErrorResponse = factory(root.DemoFrontApi.ApiClient, root.DemoFrontApi.Error);
+    root.AlertagentFrontApi.ErrorResponse = factory(root.AlertagentFrontApi.ApiClient, root.AlertagentFrontApi.Error);
   }
 }(this, function(ApiClient, Error) {
   'use strict';

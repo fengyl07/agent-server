@@ -6,6 +6,8 @@ biz:
     # 应用编码（全大写、首字母大写或带数字，如：CMDB、Automation、APP360、VideoMon）
     code: AlertAgent
     lower-code: alertagent
+    name: 告警智能研判Agent
+    contextPath: /alertagent
     # 英文描述信息
     description: ${biz.app.lower-code} app
     # 中文描述信息
@@ -28,7 +30,7 @@ biz:
     code: ${biz.app.lower-code}-main
     # 模块中文名称
     name: 告警智能研判Agent
-    description: ${lowerCode}主模块
+    description: ${biz.app.lower-code}主模块
     main-class: uyun.eagle.agent.alertagent.StartApplication
     # 版本信息（以“.”分割四位数字组成）
     version: 2.0.16.40
@@ -119,6 +121,8 @@ biz:
 
 # Spring 公共配置
 spring:
+  main:
+    allow-bean-definition-overriding: true
   application:
     name: ${biz.module.code}
   profiles:

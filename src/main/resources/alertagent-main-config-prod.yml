@@ -1,16 +1,44 @@
 spring:
+  profiles:
+    active: test
   datasource:
-    url: jdbc:mysql://${mysql.ip}:${mysql.port}/${biz.app.lower-code}?createDatabaseIfNotExist=true&useUnicode=true&characterEncoding=UTF-8&zeroDateTimeBehavior=convertToNull&allowMultiQueries=true&useSSL=true&verifyServerCertificate=false
-    username: ${mysql.username.alertagent}
-    password: ${mysql.password.alertagent}
+    url: jdbc:mysql://10.1.53.34:3306/alertagent?createDatabaseIfNotExist=true&useUnicode=true&characterEncoding=UTF-8&zeroDateTimeBehavior=convertToNull&allowMultiQueries=true&useSSL=true&verifyServerCertificate=false
+    username: alertagent
+    password: qhjwWCVX_76148
     driver-class-name: com.mysql.jdbc.Driver
-# 自定义业务配置项
+
 biz:
   app:
+    code: AlertAgent
+    lower-code: alertagent
+    # 关键：description 必须是列表，一条英文 + 一条中文
+    description:
+      - alertagent app
+      - 告警智能研判Agent
+    # 下面这两个 own-consumer 不读，可删可留（留着也不生效）
+    # name: 告警智能研判Agent
+    # contextPath: /alertagent
+    # descriptionCn: 告警智能研判Agent
     security:
-      # 提供访问apikey 供sdk调用租户openApi使用,使用third-consumer-spring-boot-starter 产品权限注册组件需要提供，该组件使用openApi方式进行权限，
-      # 产品信息注册，顾需要提供apikey, 应用本身提供给外部调用无需提供apiKey.
+      enabled: false
       api-key: cf83434c997511ea8866005056b906d7
+      validation-path: /alertagent/frontapi/v1/**
+      ineffectiveness-path: /, /static/**, /tenant/**, /frontend/**, /actuator/**,/metrics/**, /h2/**, /actuator/health, /favicon.ico,/test/hello, /alertagent/frontapi/v1/agent/**
+
 dubbo:
   registry:
-    address: ${zk.url}
+    address: zookeeper://10.1.53.33:2181
+  consumer:
+    timeout: 30000
+    check: false
+    retries: 0
+
+alert:
+  openapi:
+    base-url: http://10.1.53.32:7508/alert/openapi
+    apikey: f679db9e33e311f19e0200505699e6df
+    connect-timeout: 5000
+    read-timeout: 30000
+
+server:
+  port: 8091

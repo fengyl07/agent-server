@@ -17,7 +17,6 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
-@javax.annotation.Generated(value = "class io.swagger.codegen.languages.SpringCodegen", date = "2019-08-29T17:35:56.319+08:00")
 
 @Api(value = "todos", description = "the todos API")
 @RequestMapping(value = "/{appcode}/frontapi/v1")

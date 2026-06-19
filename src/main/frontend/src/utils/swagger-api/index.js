@@ -1,6 +1,6 @@
 /**
- * demo FrontAPI
- * demo FrontAPI
+ * alertagent FrontAPI
+ * alertagent FrontAPI
  *
  * OpenAPI spec version: 2.0.0
  * 
@@ -34,14 +34,14 @@
   'use strict';
 
   /**
-   * demo_FrontAPI.<br>
+   * alertagent_FrontAPI.<br>
    * The <code>index</code> module provides access to constructors for all the classes which comprise the public API.
    * <p>
    * An AMD (recommended!) or CommonJS application will generally do something equivalent to the following:
    * <pre>
-   * var DemoFrontApi = require('index'); // See note below*.
-   * var xxxSvc = new DemoFrontApi.XxxApi(); // Allocate the API class we're going to use.
-   * var yyyModel = new DemoFrontApi.Yyy(); // Construct a model instance.
+   * var AlertagentFrontApi = require('index'); // See note below*.
+   * var xxxSvc = new AlertagentFrontApi.XxxApi(); // Allocate the API class we're going to use.
+   * var yyyModel = new AlertagentFrontApi.Yyy(); // Construct a model instance.
    * yyyModel.someProperty = 'someValue';
    * ...
    * var zzz = xxxSvc.doSomething(yyyModel); // Invoke the service.
@@ -53,8 +53,8 @@
    * <p>
    * A non-AMD browser application (discouraged) might do something like this:
    * <pre>
-   * var xxxSvc = new DemoFrontApi.XxxApi(); // Allocate the API class we're going to use.
-   * var yyy = new DemoFrontApi.Yyy(); // Construct a model instance.
+   * var xxxSvc = new AlertagentFrontApi.XxxApi(); // Allocate the API class we're going to use.
+   * var yyy = new AlertagentFrontApi.Yyy(); // Construct a model instance.
    * yyyModel.someProperty = 'someValue';
    * ...
    * var zzz = xxxSvc.doSomething(yyyModel); // Invoke the service.

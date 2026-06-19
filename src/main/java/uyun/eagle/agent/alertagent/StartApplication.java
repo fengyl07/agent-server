@@ -3,9 +3,7 @@ package uyun.eagle.agent.alertagent;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.builder.SpringApplicationBuilder;
-import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
-import org.springframework.web.client.RestTemplate;
 import uyun.eagle.agent.alertagent.common.Utils;
 
 /**
@@ -24,18 +22,6 @@ public class StartApplication {
         log.warn("appCode: {}",ymlName);
         new SpringApplicationBuilder(StartApplication.class).main(StartApplication.class)
                 .properties("spring.config.name:" + ymlName + "-main-base," + ymlName + "-main-config").build().run(args);
-    }
-
-    /**
-     * 全局 RestTemplate，供 Agent 调用 Alert OpenAPI 及其他 HTTP 接入使用。
-     */
-    @Bean
-    public RestTemplate restTemplate() {
-        org.springframework.http.client.SimpleClientHttpRequestFactory factory =
-                new org.springframework.http.client.SimpleClientHttpRequestFactory();
-        factory.setConnectTimeout(5000);
-        factory.setReadTimeout(30000);
-        return new RestTemplate(factory);
     }
 
 }

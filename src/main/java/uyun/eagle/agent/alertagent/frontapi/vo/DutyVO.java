@@ -16,7 +16,6 @@ import java.util.List;
 /**
  * DutyVO
  */
-@javax.annotation.Generated(value = "class io.swagger.codegen.languages.SpringCodegen", date = "2019-06-14T15:08:33.768+08:00")
 
 
 public class DutyVO   {

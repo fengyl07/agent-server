@@ -1,6 +1,6 @@
 /**
- * demo FrontAPI
- * demo FrontAPI
+ * alertagent FrontAPI
+ * alertagent FrontAPI
  *
  * OpenAPI spec version: 2.0.0
  * 
@@ -31,10 +31,10 @@
     module.exports = factory(require('superagent'));
   } else {
     // Browser globals (root is window)
-    if (!root.DemoFrontApi) {
-      root.DemoFrontApi = {};
+    if (!root.AlertagentFrontApi) {
+      root.AlertagentFrontApi = {};
     }
-    root.DemoFrontApi.ApiClient = factory(root.superagent);
+    root.AlertagentFrontApi.ApiClient = factory(root.superagent);
   }
 }(this, function(superagent) {
   'use strict';
@@ -55,9 +55,9 @@
     /**
      * The base URL against which to resolve every API call's (relative) path.
      * @type {String}
-     * @default http://localhost/demo/frontapi/v1
+     * @default http://localhost/alertagent/frontapi/v1
      */
-    var baseUrl = '/demo/frontapi/v1';
+    var baseUrl = '/alertagent/frontapi/v1';
     var matchProtocolDomainHost = /^.*\/\/[^\/]+:?[0-9]?\//i;
     var context = baseUrl.replace(matchProtocolDomainHost, '');
     this.basePath = context.replace(/\/+$/, '');

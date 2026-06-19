@@ -15,7 +15,6 @@ import java.io.Serializable;
 /**
  * ErrorResponse
  */
-@javax.annotation.Generated(value = "class io.swagger.codegen.languages.SpringCodegen", date = "2019-06-14T15:08:34.020+08:00")
 
 @DefaultSerializer(CompatibleFieldSerializer.class)
 public class ErrorResponse  implements Serializable {
