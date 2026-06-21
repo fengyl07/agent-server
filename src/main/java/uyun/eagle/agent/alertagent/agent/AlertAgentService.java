@@ -5,6 +5,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import uyun.eagle.agent.alertagent.agent.dto.AgentChatRequest;
 import uyun.eagle.agent.alertagent.agent.dto.AgentChatResponse;
+import uyun.eagle.agent.alertagent.config.LlmProperties;
 import uyun.eagle.agent.alertagent.tool.AlertQueryTools;
 import uyun.eagle.agent.alertagent.tool.dto.AlertBrief;
 import uyun.eagle.agent.alertagent.tool.dto.AlertCount;
@@ -14,10 +15,14 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * 告警 Agent 编排服务（Phase 1：关键词路由）。
+ * 告警 Agent 编排服务。
  *
- * <p>当前不依赖 LLM：根据用户消息识别意图 -> 调用 {@link AlertQueryTools} -> 模板化输出。
- * Phase 1b 接入 LLM 后，可在此处替换为 Tool Calling，并用 LLM 对工具结果做润色与研判。
+ * <p>双模式：
+ * <ul>
+ *     <li>{@code llm.enabled=true}：走 {@link AlertLlmAgent}（LLM + Tool Calling），理解更灵活、可做研判；</li>
+ *     <li>{@code llm.enabled=false} 或 LLM 调用异常：降级到关键词路由（Phase 1 行为），不依赖外部模型。</li>
+ * </ul>
+ * 两种模式底层都调用同一套 {@link AlertQueryTools}，全程只读。
  */
 @Slf4j
 @Service
@@ -32,9 +37,14 @@ public class AlertAgentService {
     @Autowired
     private AlertQueryTools alertQueryTools;
 
+    @Autowired
+    private LlmProperties llmProperties;
+
+    @Autowired
+    private AlertLlmAgent alertLlmAgent;
+
     /**
-     * 处理一次对话。结构化字段（{@link AgentChatRequest#getStatus()} / {@code entityName}）
-     * 优先级高于从消息文本中识别到的关键词。
+     * 处理一次对话。{@code llm.enabled=true} 时优先用 LLM 编排，失败自动降级到关键词路由。
      *
      * @param request 对话请求
      * @return 对话响应
@@ -45,6 +55,22 @@ public class AlertAgentService {
         if (message == null || message.trim().isEmpty()) {
             return new AgentChatResponse(AlertAgentPrompts.HELP_TEXT, sessionId, "help");
         }
+
+        if (llmProperties.isEnabled()) {
+            try {
+                return alertLlmAgent.chat(message.trim(), sessionId);
+            } catch (Exception e) {
+                log.warn("[AlertAgent] LLM 处理失败，降级到关键词路由: {}", e.getMessage());
+            }
+        }
+        return keywordChat(request, message, sessionId);
+    }
+
+    /**
+     * 关键词路由（Phase 1 行为）。结构化字段（{@link AgentChatRequest#getStatus()} / {@code entityName}）
+     * 优先级高于从消息文本中识别到的关键词。
+     */
+    private AgentChatResponse keywordChat(AgentChatRequest request, String message, String sessionId) {
         String text = message.trim();
         String incidentId = extractIncidentId(text);
         String reqStatus = request == null ? null : request.getStatus();

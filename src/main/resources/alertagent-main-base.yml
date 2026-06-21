@@ -196,12 +196,21 @@ alert:
     connect-timeout: 5000
     read-timeout: 30000
 
-# LLM 接入占位（Phase 1b 研判用，当前未启用）；指向测试环境 Ollama / DeepSeek / 模型网关（OpenAI 兼容）
+# LLM 接入（Phase 1b）；指向 DeepSeek API / Ollama / 公司模型网关（OpenAI 兼容）。
+# enabled=true 时 Chat 走 LLM + Tool Calling；false 或调用异常时自动降级到关键词路由。
+# 真实 api-key 请在 Apollo 注入，勿提交到仓库。
 llm:
   enabled: false
   base-url: http://CHANGE_ME/v1
   api-key: CHANGE_ME
   model: deepseek-chat
+  # 连接/读取超时（毫秒）；LLM 生成较慢，读超时默认放宽
+  connect-timeout: 10000
+  read-timeout: 60000
+  # 采样温度，告警研判建议偏低
+  temperature: 0.2
+  # 单次对话内最大工具调用轮数，防止死循环
+  max-tool-rounds: 5
 
 #配置默认命名，空间
 whale:

@@ -23,7 +23,7 @@ biz:
       enabled: false
       api-key: cf83434c997511ea8866005056b906d7
       validation-path: /alertagent/frontapi/v1/**
-      ineffectiveness-path: /, /static/**, /tenant/**, /frontend/**, /actuator/**,/metrics/**, /h2/**, /actuator/health, /favicon.ico,/test/hello, /alertagent/frontapi/v1/agent/**
+      ineffectiveness-path: /, /static/**, /tenant/**, /frontend/**, /actuator/**,/metrics/**, /h2/**, /actuator/health, /favicon.ico,/test/hello, /alertagent/frontapi/v1/agent/**, /alertagent/mcp, /alertagent/mcp/**
 
 dubbo:
   registry:
@@ -39,6 +39,14 @@ alert:
     apikey: f679db9e33e311f19e0200505699e6df
     connect-timeout: 5000
     read-timeout: 30000
+    # MCP Server（Phase 1）：暴露只读查询工具给 Cursor 等 MCP 客户端，默认开启
+    mcp:
+      enabled: ${alert.mcp.enabled:true}
 
+llm:
+  enabled: true
+  base-url: https://api.deepseek.com/v1
+  api-key: sk-d3d68c8faa1c4ddb87f0ebc39e023645
+  model: deepseek-chat
 server:
   port: 8091

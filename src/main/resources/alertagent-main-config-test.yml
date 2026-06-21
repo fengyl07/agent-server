@@ -18,9 +18,13 @@ alert:
   mcp:
     enabled: ${alert.mcp.enabled:true}
 
-# LLM 接入（测试环境，Phase 1b 启用）
+# LLM 接入（测试环境，Phase 1b）：在 Apollo 配置 llm.enabled / llm.baseurl / llm.apikey / llm.model
 llm:
   enabled: ${llm.enabled:false}
   base-url: ${llm.baseurl:http://CHANGE_ME/v1}
   api-key: ${llm.apikey:CHANGE_ME}
   model: ${llm.model:deepseek-chat}
+  connect-timeout: ${llm.connect.timeout:10000}
+  read-timeout: ${llm.read.timeout:60000}
+  temperature: ${llm.temperature:0.2}
+  max-tool-rounds: ${llm.max.tool.rounds:5}
