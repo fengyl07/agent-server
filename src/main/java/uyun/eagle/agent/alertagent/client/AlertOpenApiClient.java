@@ -17,12 +17,13 @@ import java.util.Map;
  * Alert OpenAPI 调用封装（Phase 1，只读）。
  *
  * <p>统一处理 baseUrl、apikey、错误与 JSON 解析；不依赖 alert-agent 本地数据库。
- * 对应 Alert 的 OpenAPI（basePath = /alert/openapi/v2）：
+ * 对应 Alert 的 OpenAPI（baseUrl = http://host:port/alert/openapi，不含 /v2）：
  * <ul>
  *     <li>GET /v2/incident/query —— 告警列表查询（含 total）</li>
- *     <li>GET /incident/getIncidentById —— 单条告警详情</li>
+ *     <li>GET /v2/incident/getIncidentById —— 单条告警详情</li>
  * </ul>
- * 注意：query 接口在 Alert 端的完整路径为 {baseUrl}/v2/incident/query（baseUrl 已含一层 /alert/openapi/v2）。
+ * 注意：Alert 端 Controller 映射为 {OPEN_API}v2/incident，故完整路径为 {baseUrl}/v2/incident/xxx，
+ * baseUrl 末尾不要再带 /v2，否则会出现 /v2/v2 的 404。
  */
 @Slf4j
 @Component
@@ -64,7 +65,7 @@ public class AlertOpenApiClient {
      */
     public JsonObject getAlertById(String incidentId) {
         String url = UriComponentsBuilder
-                .fromHttpUrl(alertProperties.getBaseUrl() + "/incident/getIncidentById")
+                .fromHttpUrl(alertProperties.getBaseUrl() + "/v2/incident/getIncidentById")
                 .queryParam("apikey", alertProperties.getApikey())
                 .queryParam("incidentId", incidentId)
                 .build(true)

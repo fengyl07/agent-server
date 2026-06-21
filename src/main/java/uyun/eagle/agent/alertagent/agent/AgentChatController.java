@@ -26,9 +26,11 @@ public class AgentChatController {
 
     @PostMapping("/chat")
     public AgentChatResponse chat(@RequestBody AgentChatRequest request) {
-        String message = request == null ? null : request.getMessage();
-        String sessionId = request == null ? null : request.getSessionId();
-        log.info("[AgentChat] sessionId={}, message={}", sessionId, message);
-        return alertAgentService.chat(message, sessionId);
+        if (request == null) {
+            request = new AgentChatRequest();
+        }
+        log.info("[AgentChat] sessionId={}, status={}, entityName={}, message={}",
+                request.getSessionId(), request.getStatus(), request.getEntityName(), request.getMessage());
+        return alertAgentService.chat(request);
     }
 }

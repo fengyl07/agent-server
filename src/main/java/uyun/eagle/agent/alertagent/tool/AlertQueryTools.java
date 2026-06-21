@@ -10,10 +10,13 @@ import uyun.eagle.agent.alertagent.client.AlertOpenApiClient;
 import uyun.eagle.agent.alertagent.tool.dto.AlertBrief;
 import uyun.eagle.agent.alertagent.tool.dto.AlertCount;
 
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -30,6 +33,11 @@ public class AlertQueryTools {
 
     private static final int DEFAULT_PAGE_SIZE = 20;
     private static final int DEFAULT_SIMILAR_TOP_N = 10;
+    /** 已关闭状态码（IncidentStatus.CLOSED） */
+    private static final int STATUS_CLOSED = 255;
+    /** 未关闭模式下为保证过滤后仍有足量数据，向后端多取的上限 */
+    private static final int MAX_FETCH_SIZE = 200;
+    private static final DateTimeFormatter TIME_FMT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
     @Autowired
     private AlertOpenApiClient alertOpenApiClient;
@@ -66,23 +74,49 @@ public class AlertQueryTools {
     /**
      * 告警列表查询。
      *
+     * <p>默认行为（status 为空时）：只返回<b>未关闭</b>的告警；按<b>最后发生时间倒序</b>排列。
+     * status 可传：数字状态码、中文（未接手/已确认/处理中/已解决/已关闭）、英文（new/closed...）、
+     * 或 {@code all}/{@code 全部}（表示包含已关闭在内的所有状态）。
+     *
      * @param pageNo     页码（从 1 开始，&lt;=0 时取 1）
      * @param pageSize   每页条数（&lt;=0 时取默认 20）
-     * @param severity   告警级别（可空）
-     * @param status     告警状态（可空）
-     * @param entityName 故障源名称（可空）
+     * @param severity   告警级别（可空，仅接受数字码）
+     * @param status     告警状态（可空，见上）
+     * @param entityName 故障源名称（可空，按对象名过滤）
      * @return 告警摘要列表
      */
     public List<AlertBrief> queryAlerts(int pageNo, int pageSize, String severity, String status, String entityName) {
+        int size = pageSize <= 0 ? DEFAULT_PAGE_SIZE : pageSize;
+        String s = status == null ? null : status.trim();
+        boolean queryAll = s != null && (s.equalsIgnoreCase("all") || "全部".equals(s));
+        Integer statusCode = queryAll ? null : parseStatusCode(s);
+        // 既不是“全部”、也没有识别出明确状态码时，默认只查未关闭
+        boolean defaultUnclosed = !queryAll && statusCode == null;
+        // 未关闭模式需要本地再过滤掉已关闭，故向后端多取一些以保证结果数量
+        int fetchSize = defaultUnclosed ? Math.min(size * 3, MAX_FETCH_SIZE) : size;
+
         Map<String, String> params = new LinkedHashMap<>();
         params.put("pageNo", String.valueOf(pageNo <= 0 ? 1 : pageNo));
-        params.put("pageSize", String.valueOf(pageSize <= 0 ? DEFAULT_PAGE_SIZE : pageSize));
+        params.put("pageSize", String.valueOf(fetchSize));
         putIfInteger(params, "severity", severity);
-        putIfInteger(params, "status", status);
+        if (statusCode != null) {
+            params.put("status", String.valueOf(statusCode));
+        }
         putIfNotBlank(params, "entityName", entityName);
 
         JsonObject rsp = alertOpenApiClient.queryAlerts(params);
-        return parseRecords(rsp);
+        List<AlertBrief> list = parseRecords(rsp);
+
+        if (defaultUnclosed) {
+            list.removeIf(b -> b.getStatusCode() != null && b.getStatusCode() == STATUS_CLOSED);
+        }
+        // lastOccurTime 已统一格式化为 yyyy-MM-dd HH:mm:ss，字典序即时间序，可直接字符串倒序
+        list.sort(Comparator.comparing(AlertBrief::getLastOccurTime,
+                Comparator.nullsLast(Comparator.reverseOrder())));
+        if (list.size() > size) {
+            return new ArrayList<>(list.subList(0, size));
+        }
+        return list;
     }
 
     /**
@@ -96,9 +130,17 @@ public class AlertQueryTools {
         if (rsp == null || rsp.entrySet().isEmpty()) {
             return null;
         }
-        // 详情接口直接返回告警对象本身
-        JsonObject alert = rsp.has("records") ? firstRecord(rsp) : rsp;
-        return alert == null ? null : toBrief(alert);
+        // getIncidentById 返回 { message, statusCode, data:<Alert> }，告警对象在 data 下
+        JsonObject alert = rsp;
+        if (rsp.has("data") && rsp.get("data").isJsonObject()) {
+            alert = rsp.get("data").getAsJsonObject();
+        } else if (rsp.has("records")) {
+            alert = firstRecord(rsp);
+        }
+        if (alert == null || alert.entrySet().isEmpty()) {
+            return null;
+        }
+        return toBrief(alert);
     }
 
     /**
@@ -176,16 +218,129 @@ public class AlertQueryTools {
         AlertBrief b = new AlertBrief();
         b.setId(getString(o, "id"));
         b.setName(getString(o, "name"));
-        // 优先展示中文级别/状态，回退到原始值
-        b.setSeverity(firstNonBlank(getString(o, "severityCN"), getString(o, "severity")));
-        b.setStatus(firstNonBlank(getString(o, "statusCN"), getString(o, "status")));
+        // 级别：优先用接口给的中文，其次按数字码映射，最后回退原始值
+        Integer sevCode = getInteger(o, "severity");
+        b.setSeverity(firstNonBlank(getString(o, "severityCN"), severityCN(sevCode, getString(o, "severity"))));
+        // 状态：同上；并保留原始状态码用于精确过滤
+        Integer stCode = getInteger(o, "status");
+        b.setStatusCode(stCode);
+        b.setStatus(firstNonBlank(getString(o, "statusCN"), statusCN(stCode, getString(o, "status"))));
         b.setEntityName(getString(o, "entityName"));
         b.setEntityAddr(getString(o, "entityAddr"));
         b.setSource(getString(o, "source"));
         b.setCount(o.has("count") && !o.get("count").isJsonNull() ? parseLongSafe(getString(o, "count")) : null);
-        b.setLastOccurTime(getString(o, "lastOccurTime"));
+        b.setLastOccurTime(formatTime(getString(o, "lastOccurTime")));
         b.setDescription(getString(o, "description"));
         return b;
+    }
+
+    /**
+     * 解析状态过滤条件为后端状态码。
+     *
+     * <p>支持：数字码、中文（未接手/已确认/处理中/已解决/已关闭）、英文（new/acknowledged/assigned/resolved/closed）。
+     * 无法识别（含 null、未关闭、open 等模糊词）时返回 {@code null}，由调用方按“默认只查未关闭”处理。
+     */
+    private static Integer parseStatusCode(String s) {
+        if (s == null) {
+            return null;
+        }
+        String v = s.trim();
+        if (v.isEmpty()) {
+            return null;
+        }
+        try {
+            return Integer.parseInt(v);
+        } catch (NumberFormatException ignored) {
+            // 继续按文本匹配
+        }
+        switch (v.toLowerCase()) {
+            case "未接手":
+            case "新发生":
+            case "new":
+                return 0;
+            case "已确认":
+            case "acknowledged":
+                return 40;
+            case "处理中":
+            case "assigned":
+            case "progressing":
+                return 150;
+            case "已解决":
+            case "resolved":
+                return 190;
+            case "已关闭":
+            case "关闭":
+            case "closed":
+                return STATUS_CLOSED;
+            default:
+                return null;
+        }
+    }
+
+    private static String statusCN(Integer code, String fallback) {
+        if (code == null) {
+            return fallback;
+        }
+        switch (code) {
+            case 0:   return "未接手";
+            case 40:  return "已确认";
+            case 150: return "处理中";
+            case 190: return "已解决";
+            case 255: return "已关闭";
+            default:  return fallback;
+        }
+    }
+
+    private static String severityCN(Integer code, String fallback) {
+        if (code == null) {
+            return fallback;
+        }
+        switch (code) {
+            case 3: return "紧急";
+            case 2: return "错误";
+            case 1: return "警告";
+            case 0: return "恢复";
+            default: return fallback;
+        }
+    }
+
+    /** 将毫秒/秒时间戳格式化为 yyyy-MM-dd HH:mm:ss；已是文本时间则原样返回。 */
+    private static String formatTime(String raw) {
+        if (raw == null || raw.trim().isEmpty()) {
+            return null;
+        }
+        String v = raw.trim();
+        try {
+            long millis = Long.parseLong(v);
+            if (v.length() <= 10) {
+                millis *= 1000L;
+            }
+            return TIME_FMT.format(Instant.ofEpochMilli(millis).atZone(ZoneId.systemDefault()));
+        } catch (NumberFormatException e) {
+            return v;
+        }
+    }
+
+    private static Integer getInteger(JsonObject o, String key) {
+        if (o == null || !o.has(key) || o.get(key).isJsonNull()) {
+            return null;
+        }
+        try {
+            return o.get(key).getAsInt();
+        } catch (Exception e) {
+            return parseIntSafe(getString(o, key));
+        }
+    }
+
+    private static Integer parseIntSafe(String s) {
+        if (s == null || s.trim().isEmpty()) {
+            return null;
+        }
+        try {
+            return Integer.parseInt(s.trim());
+        } catch (NumberFormatException e) {
+            return null;
+        }
     }
 
     private static void putIfNotBlank(Map<String, String> params, String key, String value) {
