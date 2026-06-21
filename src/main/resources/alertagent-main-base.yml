@@ -23,7 +23,7 @@ biz:
       # 需要验证登录的地址
       validation-path: /alertagent/frontapi/v1/**
       #不需要验证登录地址
-      ineffectiveness-path: /, /static/**, /tenant/**, /frontend/**, /actuator/**,/metrics/**, /h2/**, /actuator/health, /favicon.ico,/test/hello, /alertagent/frontapi/v1/agent/**
+      ineffectiveness-path: /, /static/**, /tenant/**, /frontend/**, /actuator/**,/metrics/**, /h2/**, /actuator/health, /favicon.ico,/test/hello, /alertagent/frontapi/v1/agent/**, /alertagent/mcp, /alertagent/mcp/**
 
   module:
     # 模块编码（全部小写，单模块应用为 应用编码小写-main ）

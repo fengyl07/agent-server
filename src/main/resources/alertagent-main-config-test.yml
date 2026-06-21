@@ -14,6 +14,9 @@ alert:
   openapi:
     base-url: ${alert.openapi.baseurl}
     apikey: ${alert.openapi.apikey}
+  # MCP Server（Phase 1）：暴露只读查询工具给 Cursor 等 MCP 客户端，默认开启
+  mcp:
+    enabled: ${alert.mcp.enabled:true}
 
 # LLM 接入（测试环境，Phase 1b 启用）
 llm:
