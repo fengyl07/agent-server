@@ -9,6 +9,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import uyun.eagle.agent.alertagent.config.LlmProperties;
+import uyun.eagle.agent.alertagent.knowledge.KnowledgeBaseLoader;
 import uyun.eagle.agent.alertagent.llm.LlmChatClient;
 import uyun.eagle.agent.alertagent.mcp.McpToolRegistry;
 import uyun.eagle.agent.alertagent.agent.dto.AgentChatResponse;
@@ -36,6 +37,9 @@ public class AlertLlmAgent {
     @Autowired
     private McpToolRegistry toolRegistry;
 
+    @Autowired
+    private KnowledgeBaseLoader knowledgeBaseLoader;
+
     /**
      * 以 LLM + Tool Calling 处理一次对话。
      *
@@ -46,7 +50,7 @@ public class AlertLlmAgent {
      */
     public AgentChatResponse chat(String message, String sessionId) {
         JsonArray messages = new JsonArray();
-        messages.add(textMessage("system", AlertAgentPrompts.SYSTEM_PROMPT));
+        messages.add(textMessage("system", buildSystemPrompt()));
         messages.add(textMessage("user", message));
 
         JsonArray tools = buildTools();
@@ -88,6 +92,21 @@ public class AlertLlmAgent {
 
         log.warn("[AlertLlmAgent] 达到最大工具轮数 {}，仍未产出最终回复", maxRounds);
         return new AgentChatResponse("查询轮次过多，请缩小问题范围后重试。", sessionId, "llm");
+    }
+
+    /**
+     * 构造 system 提示：基础角色约束 + （可选）运维知识库。
+     * 知识库为空时退化为仅基础约束，不影响对话。
+     */
+    private String buildSystemPrompt() {
+        String knowledge = knowledgeBaseLoader.getKnowledgeText();
+        if (knowledge == null || knowledge.trim().isEmpty()) {
+            return AlertAgentPrompts.SYSTEM_PROMPT;
+        }
+        return AlertAgentPrompts.SYSTEM_PROMPT
+                + "\n\n" + AlertAgentPrompts.KNOWLEDGE_PREAMBLE
+                + "\n" + knowledge.trim()
+                + "\n" + AlertAgentPrompts.KNOWLEDGE_SUFFIX;
     }
 
     /** 执行单个 tool_call，返回对应的 role=tool 消息。工具异常以文本回传给 LLM，不中断对话。 */

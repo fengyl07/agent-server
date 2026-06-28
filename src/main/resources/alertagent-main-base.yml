@@ -212,6 +212,15 @@ llm:
   # 单次对话内最大工具调用轮数，防止死循环
   max-tool-rounds: 5
 
+# 运维知识库（Phase 1c）；启动时把 location 匹配到的 Markdown 整体注入 LLM 的 system 消息，
+# 提升告警研判的业务贴合度（整份注入，非向量检索 RAG）。仅在 llm.enabled=true 时实际生效。
+knowledge:
+  enabled: true
+  # Spring 资源通配，默认加载 classpath 下 knowledge 目录的所有 md
+  location: "classpath*:knowledge/*.md"
+  # 注入字符上限，超出截断，防止上下文过长；0 或负数表示不限制
+  max-chars: 8000
+
 #配置默认命名，空间
 whale:
   distributed:

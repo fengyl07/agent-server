@@ -20,7 +20,7 @@ import java.util.Map;
  * 对应 Alert 的 OpenAPI（baseUrl = http://host:port/alert/openapi，不含 /v2）：
  * <ul>
  *     <li>GET /v2/incident/query —— 告警列表查询（含 total）</li>
- *     <li>GET /v2/incident/getIncidentById —— 单条告警详情</li>
+ *     <li>GET AlertQueryTools/v2/incident/getIncidentById —— 单条告警详情</li>
  * </ul>
  * 注意：Alert 端 Controller 映射为 {OPEN_API}v2/incident，故完整路径为 {baseUrl}/v2/incident/xxx，
  * baseUrl 末尾不要再带 /v2，否则会出现 /v2/v2 的 404。
