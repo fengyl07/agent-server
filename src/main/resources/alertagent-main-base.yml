@@ -221,6 +221,43 @@ knowledge:
   # 注入字符上限，超出截断，防止上下文过长；0 或负数表示不限制
   max-chars: 8000
 
+# RAG 向量检索（Phase 1d）；把 knowledge 目录的 md 切块、向量化后写入 Qdrant，
+# 对外暴露 search_knowledge 工具（Chat + MCP/Cursor 共用），按需检索而非整份注入。
+# enabled=false（默认）时不索引、不注册工具，行为回退到 Phase 1c。敏感项（embedding.api-key）走 Apollo 注入。
+rag:
+  enabled: false
+  embedding:
+    # OpenAI 兼容 Embeddings 基路径（结尾不带斜杠），如阿里百炼 compatible-mode/v1
+    base-url: http://CHANGE_ME/compatible-mode/v1
+    api-key: CHANGE_ME
+    model: text-embedding-v4
+    # 向量维度，必须与 Qdrant collection 一致
+    dimension: 1024
+    # 单批最大文本条数（阿里 text-embedding-v4 上限 10）
+    batch-size: 10
+    connect-timeout: 10000
+    read-timeout: 30000
+  qdrant:
+    # 同机部署绑定 127.0.0.1，避免对外暴露
+    host: 127.0.0.1
+    port: 6333
+    collection: alert_agent_kb
+    distance: Cosine
+    connect-timeout: 3000
+    read-timeout: 10000
+  search:
+    # 检索返回条数 Top-K
+    top-k: 5
+    # 最低相似度分数过滤；<=0 表示不过滤
+    min-score: 0.0
+  index:
+    # 启动时全量重建索引
+    auto-on-startup: true
+    location: "classpath*:knowledge/*.md"
+    # 切块目标长度与重叠（字符）
+    chunk-size: 600
+    chunk-overlap: 80
+
 #配置默认命名，空间
 whale:
   distributed:

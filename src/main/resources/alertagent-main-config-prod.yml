@@ -50,3 +50,30 @@ llm:
   model: deepseek-chat
 server:
   port: 8091
+
+# RAG 向量检索（Phase 1d，本地直配；勿用 ${rag.xxx}，避免与自身循环引用）
+rag:
+  enabled: true
+  embedding:
+    base-url: https://dashscope.aliyuncs.com/compatible-mode/v1
+    api-key: sk-ws-H.RXMPEMY.JCoQ.MEUCIQCI2-2-kP-tBo7e2aTAEmVT7nPsMrIe53pAh8nWwhd4SQIgH343j1VQ0hhUnhh6rUcGzMz_Lgn8J4NfHICjUiCZtfY
+    model: text-embedding-v4
+    dimension: 1024
+    batch-size: 10
+    connect-timeout: 10000
+    read-timeout: 30000
+  qdrant:
+    host: 127.0.0.1
+    port: 6333
+    collection: alert_agent_kb
+    distance: Cosine
+    connect-timeout: 3000
+    read-timeout: 10000
+  search:
+    top-k: 5
+    min-score: 0.0
+  index:
+    auto-on-startup: true
+    location: "classpath*:knowledge/*.md"
+    chunk-size: 600
+    chunk-overlap: 80

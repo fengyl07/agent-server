@@ -6,7 +6,9 @@ import com.google.gson.JsonObject;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
+import uyun.eagle.agent.alertagent.config.RagProperties;
 import uyun.eagle.agent.alertagent.tool.AlertQueryTools;
+import uyun.eagle.agent.alertagent.tool.KnowledgeSearchTools;
 
 /**
  * MCP 工具注册表（Phase 1，只读）。
@@ -25,11 +27,18 @@ public class McpToolRegistry {
     static final String TOOL_QUERY = "query_alerts";
     static final String TOOL_DETAIL = "get_alert_detail";
     static final String TOOL_SIMILAR = "find_similar_alerts";
+    static final String TOOL_SEARCH_KNOWLEDGE = "search_knowledge";
 
     private static final Gson GSON = new Gson();
 
     @Autowired
     private AlertQueryTools alertQueryTools;
+
+    @Autowired
+    private KnowledgeSearchTools knowledgeSearchTools;
+
+    @Autowired
+    private RagProperties ragProperties;
 
     /**
      * 返回 {@code tools/list} 的工具清单。
@@ -77,6 +86,20 @@ public class McpToolRegistry {
                         + "},"
                         + "\"required\":[\"incidentId\"]}"));
 
+        // RAG 启用时才暴露知识检索工具（Phase 1d）
+        if (ragProperties.isEnabled()) {
+            tools.add(tool(TOOL_SEARCH_KNOWLEDGE,
+                    "检索运维知识库（告警状态说明、级别响应、常见告警处置 SOP 等），"
+                            + "返回最相关的若干片段及来源。研判告警、给处置建议或回答运维知识问题时优先调用。",
+                    "{"
+                            + "\"type\":\"object\","
+                            + "\"properties\":{"
+                            + "\"query\":{\"type\":\"string\",\"description\":\"自然语言查询，如『CPU使用率高怎么处理』\"},"
+                            + "\"topK\":{\"type\":\"integer\",\"description\":\"返回片段条数\",\"default\":5}"
+                            + "},"
+                            + "\"required\":[\"query\"]}"));
+        }
+
         return tools;
     }
 
@@ -111,6 +134,10 @@ public class McpToolRegistry {
                 return alertQueryTools.findSimilarAlerts(
                         requireString(args, "incidentId"),
                         getInt(args, "topN", 10));
+            case TOOL_SEARCH_KNOWLEDGE:
+                return knowledgeSearchTools.searchKnowledge(
+                        requireString(args, "query"),
+                        getInt(args, "topK", 5));
             default:
                 throw new IllegalArgumentException("未知工具：" + name);
         }

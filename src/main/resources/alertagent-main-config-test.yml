@@ -28,3 +28,31 @@ llm:
   read-timeout: ${llm.read.timeout:60000}
   temperature: ${llm.temperature:0.2}
   max-tool-rounds: ${llm.max.tool.rounds:5}
+
+# RAG 向量检索（Phase 1d，测试环境）：在 Apollo 配置以下变量。
+# rag.enabled 默认 false，需要演示时置 true；embedding.apikey 为敏感项，仅在 Apollo 注入。
+rag:
+  enabled: ${rag.enabled:false}
+  embedding:
+    base-url: ${rag.embedding.baseurl:http://CHANGE_ME/compatible-mode/v1}
+    api-key: ${rag.embedding.apikey:CHANGE_ME}
+    model: ${rag.embedding.model:text-embedding-v4}
+    dimension: ${rag.embedding.dimension:1024}
+    batch-size: ${rag.embedding.batchsize:10}
+    connect-timeout: ${rag.embedding.connect.timeout:10000}
+    read-timeout: ${rag.embedding.read.timeout:30000}
+  qdrant:
+    host: ${rag.qdrant.host:127.0.0.1}
+    port: ${rag.qdrant.port:6333}
+    collection: ${rag.qdrant.collection:alert_agent_kb}
+    distance: ${rag.qdrant.distance:Cosine}
+    connect-timeout: ${rag.qdrant.connect.timeout:3000}
+    read-timeout: ${rag.qdrant.read.timeout:10000}
+  search:
+    top-k: ${rag.search.topk:5}
+    min-score: ${rag.search.minscore:0.0}
+  index:
+    auto-on-startup: ${rag.index.auto:true}
+    location: "classpath*:knowledge/*.md"
+    chunk-size: ${rag.index.chunksize:600}
+    chunk-overlap: ${rag.index.chunkoverlap:80}
