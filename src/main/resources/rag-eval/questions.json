@@ -1,0 +1,18 @@
+[
+  { "query": "已确认和处理中这两个告警状态有什么区别", "expectSource": "01-告警状态说明.md", "note": "状态语义" },
+  { "query": "为什么默认的告警列表看不到已关闭的告警", "expectSource": "01-告警状态说明.md", "note": "默认过滤" },
+  { "query": "严重级别的告警要多快响应处理", "expectSource": "02-告警级别与响应.md", "note": "级别响应" },
+  { "query": "多个告警一起来的时候先处理哪个优先级怎么排", "expectSource": "02-告警级别与响应.md", "note": "优先级排序" },
+  { "query": "磁盘快满了报警怎么处理", "expectSource": "03-常见告警处理SOP.md", "note": "磁盘SOP" },
+  { "query": "CPU 使用率飙高怎么排查", "expectSource": "03-常见告警处理SOP.md", "note": "CPU SOP" },
+  { "query": "服务器内存不够老是 OOM 怎么办", "expectSource": "03-常见告警处理SOP.md", "note": "内存SOP" },
+  { "query": "网络丢包严重怎么定位排查", "expectSource": "04-网络告警SOP.md", "note": "丢包" },
+  { "query": "端口连不上服务访问不了怎么办", "expectSource": "04-网络告警SOP.md", "note": "端口不可达" },
+  { "query": "网络延迟很高影响业务响应怎么处理", "expectSource": "04-网络告警SOP.md", "note": "延迟" },
+  { "query": "数据库连接数满了新连接进不来怎么处理", "expectSource": "05-数据库告警SOP.md", "note": "连接数" },
+  { "query": "数据库慢查询太多怎么优化", "expectSource": "05-数据库告警SOP.md", "note": "慢查询" },
+  { "query": "数据库主从复制延迟大怎么办", "expectSource": "05-数据库告警SOP.md", "note": "主从延迟" },
+  { "query": "消息队列积压消费不过来怎么办", "expectSource": "06-中间件告警SOP.md", "note": "MQ积压" },
+  { "query": "Redis 缓存内存快满了怎么处理", "expectSource": "06-中间件告警SOP.md", "note": "缓存内存" },
+  { "query": "线程池连接池被打满接口一直超时", "expectSource": "06-中间件告警SOP.md", "note": "池耗尽" }
+]

@@ -1,5 +1,6 @@
 import Todo from '@/routes/Todo'
 import Task from '@/routes/Task'
+import Chat from '@/routes/Chat'
 import NotFound from '@/routes/NotFound'
 
 export default [
@@ -25,6 +26,10 @@ export default [
       {
         path: '/dashboard/task',
         component: Task
+      },
+      {
+        path: '/dashboard/chat',
+        component: Chat
       }
     ]
   },

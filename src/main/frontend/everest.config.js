@@ -23,7 +23,7 @@ module.exports = {
     },
     {
       context: ['/alertagent/frontapi/v1'],
-      target: 'http://127.0.0.1:8090'
+      target: 'http://127.0.0.1:8091'
     }
   ]
 }

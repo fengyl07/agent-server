@@ -41,6 +41,13 @@ export default class App extends PureComponent {
             type: 'link',
             icon: <Icon type="pushpin" />,
             path: 'task'
+          },
+          {
+            key: 'chat',
+            name: __('menu-chat'),
+            type: 'link',
+            icon: <Icon type="message" />,
+            path: 'chat'
           }
         ]
       },
