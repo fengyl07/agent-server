@@ -212,6 +212,21 @@ llm:
   # 单次对话内最大工具调用轮数，防止死循环
   max-tool-rounds: 5
 
+# 短期会话记忆（Phase 1e）；按 sessionId 用进程内存滑动窗口保留最近对话，请求时重建多轮上下文，
+# 让模型理解「刚才那个/第一个」等指代。纯内存，不引入 Redis/DB、不影响既有数据；重启即清空。
+# enabled=false（默认）时行为回退到无记忆（Phase 1d）。窗口按「字符预算 + 轮数」双重约束，清理走惰性 TTL/LRU。
+agent:
+  memory:
+    enabled: false
+    # 注入历史的总字符预算（粗略对应 token），从最新往回累加到此上限
+    max-context-chars: 6000
+    # 兜底：单会话保留的最大轮数（一问一答为一轮）
+    max-turns: 20
+    # 会话空闲过期时间（分钟）
+    ttl-minutes: 60
+    # 总会话数上限，超出按最久未访问（LRU）淘汰
+    max-sessions: 500
+
 # 运维知识库（Phase 1c）；启动时把 location 匹配到的 Markdown 整体注入 LLM 的 system 消息，
 # 提升告警研判的业务贴合度（整份注入，非向量检索 RAG）。仅在 llm.enabled=true 时实际生效。
 knowledge:

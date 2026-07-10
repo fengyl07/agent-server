@@ -13,6 +13,8 @@ import uyun.eagle.agent.alertagent.knowledge.KnowledgeBaseLoader;
 import uyun.eagle.agent.alertagent.llm.LlmChatClient;
 import uyun.eagle.agent.alertagent.mcp.McpToolRegistry;
 import uyun.eagle.agent.alertagent.agent.dto.AgentChatResponse;
+import uyun.eagle.agent.alertagent.agent.memory.ChatMemoryStore;
+import uyun.eagle.agent.alertagent.agent.memory.ConversationMemory;
 /**
  * 基于 LLM 的告警对话编排（Phase 1b）。
  *
@@ -40,6 +42,9 @@ public class AlertLlmAgent {
     @Autowired
     private KnowledgeBaseLoader knowledgeBaseLoader;
 
+    @Autowired
+    private ChatMemoryStore chatMemoryStore;
+
     /**
      * 以 LLM + Tool Calling 处理一次对话。
      *
@@ -51,6 +56,10 @@ public class AlertLlmAgent {
     public AgentChatResponse chat(String message, String sessionId) {
         JsonArray messages = new JsonArray();
         messages.add(textMessage("system", buildSystemPrompt()));
+        // 注入短期会话历史（仅纯文本问答，不含中间 tool_calls），让模型理解上下文指代
+        for (ConversationMemory.Turn turn : chatMemoryStore.loadHistory(sessionId)) {
+            messages.add(textMessage(turn.getRole(), turn.getContent()));
+        }
         messages.add(textMessage("user", message));
 
         JsonArray tools = buildTools();
@@ -77,6 +86,8 @@ public class AlertLlmAgent {
                 String content = optString(assistant, "content");
                 String reply = (content == null || content.trim().isEmpty())
                         ? "未能生成回复，请换个问法试试。" : content.trim();
+                // 只记录用户问 + 助手最终文本回复，不记录中间 tool_calls/tool 消息
+                chatMemoryStore.record(sessionId, message, reply);
                 return new AgentChatResponse(reply, sessionId, "llm");
             }
 

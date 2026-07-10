@@ -51,6 +51,15 @@ llm:
 server:
   port: 8091
 
+# 短期会话记忆（Phase 1e，本地直配）；纯内存滑动窗口，不碰 Redis/MySQL/测试数据
+agent:
+  memory:
+    enabled: true
+    max-context-chars: 6000
+    max-turns: 20
+    ttl-minutes: 60
+    max-sessions: 500
+
 # RAG 向量检索（Phase 1d，本地直配；勿用 ${rag.xxx}，避免与自身循环引用）
 rag:
   enabled: true
