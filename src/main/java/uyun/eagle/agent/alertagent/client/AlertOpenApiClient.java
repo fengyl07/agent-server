@@ -4,6 +4,9 @@ import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.util.UriComponentsBuilder;
@@ -73,10 +76,46 @@ public class AlertOpenApiClient {
         return getForJson(url, "告警详情查询");
     }
 
+    /**
+     * 创建维护期（写操作）。
+     *
+     * <p>对应 Alert 端 {@code POST {OPEN_API}v2/maintenance/create}，完整路径 {baseUrl}/v2/maintenance/create。
+     * apikey 作为 query 参数传递（Alert 端 {@code MaintenanceOpenController} 通过 request.getParameter 读取，
+     * 不读 header），请求体为 {@code MaintainCreateParam} 的 JSON。
+     *
+     * @param bodyJson MaintainCreateParam 的 JSON 字符串
+     * @return Alert 返回的原始 JSON（ResultMessage 结构：result/message/data/errCode）
+     */
+    public JsonObject createMaintenance(String bodyJson) {
+        String url = UriComponentsBuilder
+                .fromHttpUrl(alertProperties.getBaseUrl() + "/v2/maintenance/create")
+                .queryParam("apikey", alertProperties.getApikey())
+                .build(true)
+                .toUriString();
+        return postForJson(url, bodyJson, "维护期创建");
+    }
+
     private JsonObject getForJson(String url, String action) {
         try {
             log.info("[AlertOpenApi] {} -> {}", action, maskApikey(url));
             String rsp = restTemplate.getForObject(url, String.class);
+            if (rsp == null || rsp.isEmpty()) {
+                return new JsonObject();
+            }
+            return GSON.fromJson(rsp, JsonObject.class);
+        } catch (Exception e) {
+            log.error("[AlertOpenApi] {} 失败: {}", action, e.getMessage());
+            throw new AlertApiException(action + "失败：" + e.getMessage(), e);
+        }
+    }
+
+    private JsonObject postForJson(String url, String bodyJson, String action) {
+        try {
+            log.info("[AlertOpenApi] {} -> {}", action, maskApikey(url));
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_JSON);
+            HttpEntity<String> entity = new HttpEntity<>(bodyJson, headers);
+            String rsp = restTemplate.postForObject(url, entity, String.class);
             if (rsp == null || rsp.isEmpty()) {
                 return new JsonObject();
             }

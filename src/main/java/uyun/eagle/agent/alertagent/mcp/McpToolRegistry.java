@@ -9,6 +9,11 @@ import org.springframework.stereotype.Component;
 import uyun.eagle.agent.alertagent.config.RagProperties;
 import uyun.eagle.agent.alertagent.tool.AlertQueryTools;
 import uyun.eagle.agent.alertagent.tool.KnowledgeSearchTools;
+import uyun.eagle.agent.alertagent.tool.MaintenanceTools;
+
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.Set;
 
 /**
  * MCP 工具注册表（Phase 1，只读）。
@@ -28,6 +33,11 @@ public class McpToolRegistry {
     static final String TOOL_DETAIL = "get_alert_detail";
     static final String TOOL_SIMILAR = "find_similar_alerts";
     static final String TOOL_SEARCH_KNOWLEDGE = "search_knowledge";
+    static final String TOOL_CREATE_MAINTENANCE = "create_maintenance";
+
+    /** 写操作工具名集合：仅在 Chat（LLM）路径可用，MCP 一律拒绝暴露与调用。 */
+    private static final Set<String> WRITE_TOOLS =
+            Collections.unmodifiableSet(new HashSet<>(Collections.singletonList(TOOL_CREATE_MAINTENANCE)));
 
     private static final Gson GSON = new Gson();
 
@@ -38,10 +48,13 @@ public class McpToolRegistry {
     private KnowledgeSearchTools knowledgeSearchTools;
 
     @Autowired
+    private MaintenanceTools maintenanceTools;
+
+    @Autowired
     private RagProperties ragProperties;
 
     /**
-     * 返回 {@code tools/list} 的工具清单。
+     * 返回 {@code tools/list} 的工具清单（MCP 用，仅只读工具，不含任何写操作）。
      */
     public JsonArray listTools() {
         JsonArray tools = new JsonArray();
@@ -104,11 +117,49 @@ public class McpToolRegistry {
     }
 
     /**
-     * 执行 {@code tools/call}。
+     * 返回供 LLM（Chat 路径）使用的工具清单：只读工具 + 写操作工具（create_maintenance）。
+     *
+     * <p>写工具只在此暴露给 LLM，不进入 {@link #listTools()}（MCP 用），从而实现「写操作仅 Chat 可用」。
+     */
+    public JsonArray listLlmTools() {
+        JsonArray tools = listTools();
+        tools.add(createMaintenanceToolDef());
+        return tools;
+    }
+
+    /** create_maintenance 的工具定义（name/description/inputSchema），内嵌字段与取值约束供 LLM 填参。 */
+    private JsonObject createMaintenanceToolDef() {
+        return tool(TOOL_CREATE_MAINTENANCE,
+                "创建维护期（在指定时间段内静默匹配到的告警）。维护对象用『条件定义』ruleData 表达，"
+                        + "不需要资源 ID。必须在向用户回显将创建的内容并取得明确确认后才调用。",
+                "{"
+                        + "\"type\":\"object\","
+                        + "\"properties\":{"
+                        + "\"name\":{\"type\":\"string\",\"description\":\"维护期名称，必填，最多20个字\"},"
+                        + "\"description\":{\"type\":\"string\",\"description\":\"描述，可选\"},"
+                        + "\"timeCondition\":{\"type\":\"integer\",\"description\":\"1=固定时段(默认)。周期性暂不支持，只传1或省略\",\"default\":1},"
+                        + "\"startTime\":{\"type\":\"integer\",\"description\":\"开始时间，毫秒时间戳(东八区)，固定时段必填\"},"
+                        + "\"endTime\":{\"type\":\"integer\",\"description\":\"结束时间，毫秒时间戳(东八区)，必须大于 startTime\"},"
+                        + "\"advanceNotify\":{\"type\":\"integer\",\"description\":\"是否提前通知：0否(默认)/1是\",\"default\":0},"
+                        + "\"skipDay\":{\"type\":\"integer\",\"description\":\"是否跨天：0否/1是，可选\"},"
+                        + "\"ruleData\":{\"type\":\"object\",\"description\":\"维护对象的过滤条件(条件定义)\",\"properties\":{"
+                        + "\"logic\":{\"type\":\"string\",\"enum\":[\"and\",\"or\"],\"description\":\"多条件关系，默认 and\"},"
+                        + "\"exprs\":{\"type\":\"array\",\"description\":\"条件列表，至少一条\",\"items\":{\"type\":\"object\",\"properties\":{"
+                        + "\"key\":{\"type\":\"string\",\"description\":\"字段：alias(告警名称)/severity(等级,数值)/appKey(来源)/entityAddr(对象或IP)/description(描述)/tag(标签)/count(次数,数值)/status(状态,数值)/networkDomain(网络域)\"},"
+                        + "\"opt\":{\"type\":\"string\",\"description\":\"字符串字段用 contain/notContain/equal/notEqual/startwith/endwith/matches；数值字段(severity/count/status)用 >、>=、==、<、=<、!=（注意小于等于写作 =<）\"},"
+                        + "\"val\":{\"type\":\"string\",\"description\":\"值。severity: 3紧急/2错误/1警告/0恢复；status: 0未接手/40已确认/150处理中/190已解决/255已关闭\"}"
+                        + "},\"required\":[\"key\",\"opt\",\"val\"]}}"
+                        + "},\"required\":[\"exprs\"]}"
+                        + "},"
+                        + "\"required\":[\"name\",\"ruleData\"]}");
+    }
+
+    /**
+     * 执行 {@code tools/call}（Chat/LLM 路径：含读与写工具）。
      *
      * @param name      工具名
      * @param arguments 参数对象（可能为 null）
-     * @return 工具结果对象（AlertCount / List&lt;AlertBrief&gt; / AlertBrief），由调用方序列化
+     * @return 工具结果对象（AlertCount / List&lt;AlertBrief&gt; / AlertBrief / MaintenanceCreateResult），由调用方序列化
      * @throws IllegalArgumentException 工具名未知或必填参数缺失
      */
     public Object callTool(String name, JsonObject arguments) {
@@ -138,9 +189,23 @@ public class McpToolRegistry {
                 return knowledgeSearchTools.searchKnowledge(
                         requireString(args, "query"),
                         getInt(args, "topK", 5));
+            case TOOL_CREATE_MAINTENANCE:
+                return maintenanceTools.createMaintenance(args);
             default:
                 throw new IllegalArgumentException("未知工具：" + name);
         }
+    }
+
+    /**
+     * 执行只读工具（MCP 路径）：拒绝一切写操作工具，其余委托给 {@link #callTool}。
+     *
+     * @throws IllegalArgumentException 试图通过 MCP 调用写工具，或工具名未知
+     */
+    public Object callReadOnlyTool(String name, JsonObject arguments) {
+        if (name != null && WRITE_TOOLS.contains(name)) {
+            throw new IllegalArgumentException("工具 " + name + " 不支持通过 MCP 调用");
+        }
+        return callTool(name, arguments);
     }
 
     private static JsonObject tool(String name, String description, String inputSchemaJson) {

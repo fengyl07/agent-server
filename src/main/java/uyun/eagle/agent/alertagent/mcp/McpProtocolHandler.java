@@ -120,7 +120,7 @@ public class McpProtocolHandler {
         }
 
         try {
-            Object toolResult = toolRegistry.callTool(name, arguments);
+            Object toolResult = toolRegistry.callReadOnlyTool(name, arguments);
             return toolResultContent(GSON.toJson(toolResult), false);
         } catch (IllegalArgumentException e) {
             // 参数类问题归为协议级错误，向上抛由 handle 转 JSON-RPC error

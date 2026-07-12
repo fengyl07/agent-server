@@ -11,6 +11,33 @@ public final class AlertAgentPrompts {
     private AlertAgentPrompts() {
     }
 
+    /**
+     * 维护期创建（写操作）行为约束。要求「先追问补全 → 回显确认 → 确认后才落库」的两阶段流程，
+     * 并把字段/取值约束、默认值、时间与输出格式讲清楚，避免误建与后端 400/500。
+     *
+     * <p>声明顺序需在 {@link #SYSTEM_PROMPT} 之前，避免静态字段的非法前向引用。
+     */
+    static final String MAINTENANCE_GUIDE =
+            "【创建维护期（静默告警）】你可以用 create_maintenance 工具创建维护期，但必须严格遵守以下流程：\n"
+                    + "1) 收集必填项，缺一不可：① 名称 name（≤20字）；② 时间段（开始、结束）；③ 维护对象，即要静默哪些告警（用条件定义 ruleData 表达）。"
+                    + "任一缺失时，用一句话向用户追问补全，不要自行编造。\n"
+                    + "2) 信息齐全后，先【回显】将要创建的内容并【明确询问用户是否确认】，在用户明确回复“确认/是/可以”等之前，"
+                    + "绝对不要调用 create_maintenance。\n"
+                    + "3) 用户确认后再调用 create_maintenance。调用成功后，用简洁富文本回报结果（名称、静默对象、时间段、维护期ID、状态=待执行）。\n"
+                    + "参数与取值约束：\n"
+                    + "- 时间用毫秒时间戳（东八区）。根据对话开头给出的“当前时间”计算用户口语时间（如“今晚8点到10点”）；结束必须晚于开始。\n"
+                    + "- ruleData 形如 {\"logic\":\"and\",\"exprs\":[{\"key\":..,\"opt\":..,\"val\":..}]}，至少一条完整条件。\n"
+                    + "- 可用字段 key：alias(告警名称)/severity(等级,数值)/appKey(来源)/entityAddr(对象或IP)/description(描述)/tag(标签)/count(次数,数值)/status(状态,数值)/networkDomain(网络域)。\n"
+                    + "- 操作符 opt：字符串字段用 contain/notContain/equal/notEqual/startwith/endwith/matches；数值字段(severity/count/status)用 >、>=、==、<、=<、!=（小于等于写作 =<）。\n"
+                    + "- 取值：severity 为 3紧急/2错误/1警告/0恢复；status 为 0未接手/40已确认/150处理中/190已解决/255已关闭。\n"
+                    + "- 优先用 alias/entityAddr/appKey/tag 表达“静默某服务/某对象/某来源”，例如静默 order 服务可用 {\"key\":\"alias\",\"opt\":\"contain\",\"val\":\"order\"}。\n"
+                    + "- 未提及的通知、周期性等高级项一律不填，使用系统默认（不提前通知、固定时段单次）。";
+
+    /**
+     * 当前时间引导语前缀。运行时拼接实际时间后置于 system 提示开头，供模型计算口语时间。
+     */
+    public static final String CURRENT_TIME_PREFIX = "当前时间：";
+
     /** 角色与行为约束（接入 LLM 时作为 system 消息） */
     public static final String SYSTEM_PROMPT =
             "你是优云 Alert 告警平台的智能研判助手（AIOps Copilot）。"
@@ -25,7 +52,8 @@ public final class AlertAgentPrompts {
                     + "若该工具不可用或未检索到相关内容，则基于通用运维经验谨慎作答并说明依据。\n"
                     + "若工具返回为空，如实说明“未查询到”，不要臆造。"
                     + "回答使用简体中文，简洁、结构化；做处置建议时要说明依据，并提示这是建议而非已执行的操作。"
-                    + "涉及接手、转派、关闭、维护期等写操作时，必须先向用户说明将要执行的操作并取得确认，当前阶段不具备执行写操作的能力。";
+                    + "涉及接手、转派、关闭等尚未开放的写操作时，说明当前不具备该能力，不要假装已执行。\n"
+                    + MAINTENANCE_GUIDE;
 
     /** 知识库注入引导语（拼在 system 中知识文本之前，明确其用途与冲突时的优先级） */
     public static final String KNOWLEDGE_PREAMBLE =

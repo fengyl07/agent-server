@@ -110,11 +110,17 @@ public class AlertLlmAgent {
      * 知识库为空时退化为仅基础约束，不影响对话。
      */
     private String buildSystemPrompt() {
+        // 注入当前时间（东八区），供模型把「今晚8点」等口语时间换算成毫秒时间戳
+        String timeLine = AlertAgentPrompts.CURRENT_TIME_PREFIX
+                + java.time.ZonedDateTime.now(java.time.ZoneId.of("Asia/Shanghai"))
+                        .format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss EEEE"))
+                + "（东八区，毫秒时间戳基准）";
+
         String knowledge = knowledgeBaseLoader.getKnowledgeText();
         if (knowledge == null || knowledge.trim().isEmpty()) {
-            return AlertAgentPrompts.SYSTEM_PROMPT;
+            return timeLine + "\n" + AlertAgentPrompts.SYSTEM_PROMPT;
         }
-        return AlertAgentPrompts.SYSTEM_PROMPT
+        return timeLine + "\n" + AlertAgentPrompts.SYSTEM_PROMPT
                 + "\n\n" + AlertAgentPrompts.KNOWLEDGE_PREAMBLE
                 + "\n" + knowledge.trim()
                 + "\n" + AlertAgentPrompts.KNOWLEDGE_SUFFIX;
@@ -152,10 +158,10 @@ public class AlertLlmAgent {
         return toolMsg;
     }
 
-    /** 把 MCP 工具清单转换为 OpenAI tools（function）格式。 */
+    /** 把工具清单（含 Chat 专用写工具）转换为 OpenAI tools（function）格式。 */
     private JsonArray buildTools() {
         JsonArray tools = new JsonArray();
-        for (JsonElement el : toolRegistry.listTools()) {
+        for (JsonElement el : toolRegistry.listLlmTools()) {
             if (!el.isJsonObject()) {
                 continue;
             }
