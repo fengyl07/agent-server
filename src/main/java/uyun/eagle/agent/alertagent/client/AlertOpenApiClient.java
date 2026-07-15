@@ -95,6 +95,31 @@ public class AlertOpenApiClient {
         return postForJson(url, bodyJson, "维护期创建");
     }
 
+    /**
+     * 告警接手（写操作）。
+     *
+     * <p>对应 Alert 端 {@code POST {OPEN_API}v2/incident/receiveByIncidentId}，完整路径
+     * {baseUrl}/v2/incident/receiveByIncidentId。apikey 作为 query 参数传递，请求体为
+     * {@code {"incidentId":"..."}}。接手人取自 apikey 对应的用户（Alert 端 getByApikey），
+     * 无需也不能由调用方指定。
+     *
+     * <p>注意：该接口返回体结构与维护期不同——成功/失败以 {@code statusCode}（200/500）表示，
+     * 无 {@code result}/{@code errCode} 字段，判定见 {@code AlertActionTools}。
+     *
+     * @param incidentId 告警 ID
+     * @return Alert 返回的原始 JSON（含 statusCode/message）
+     */
+    public JsonObject receiveIncident(String incidentId) {
+        String url = UriComponentsBuilder
+                .fromHttpUrl(alertProperties.getBaseUrl() + "/v2/incident/receiveByIncidentId")
+                .queryParam("apikey", alertProperties.getApikey())
+                .build(true)
+                .toUriString();
+        JsonObject body = new JsonObject();
+        body.addProperty("incidentId", incidentId);
+        return postForJson(url, GSON.toJson(body), "告警接手");
+    }
+
     private JsonObject getForJson(String url, String action) {
         try {
             log.info("[AlertOpenApi] {} -> {}", action, maskApikey(url));

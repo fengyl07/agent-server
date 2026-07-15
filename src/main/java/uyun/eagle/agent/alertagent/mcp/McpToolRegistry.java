@@ -7,10 +7,12 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import uyun.eagle.agent.alertagent.config.RagProperties;
+import uyun.eagle.agent.alertagent.tool.AlertActionTools;
 import uyun.eagle.agent.alertagent.tool.AlertQueryTools;
 import uyun.eagle.agent.alertagent.tool.KnowledgeSearchTools;
 import uyun.eagle.agent.alertagent.tool.MaintenanceTools;
 
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
@@ -34,10 +36,12 @@ public class McpToolRegistry {
     static final String TOOL_SIMILAR = "find_similar_alerts";
     static final String TOOL_SEARCH_KNOWLEDGE = "search_knowledge";
     static final String TOOL_CREATE_MAINTENANCE = "create_maintenance";
+    static final String TOOL_ACCEPT_ALERT = "accept_alert";
 
     /** 写操作工具名集合：仅在 Chat（LLM）路径可用，MCP 一律拒绝暴露与调用。 */
     private static final Set<String> WRITE_TOOLS =
-            Collections.unmodifiableSet(new HashSet<>(Collections.singletonList(TOOL_CREATE_MAINTENANCE)));
+            Collections.unmodifiableSet(new HashSet<>(
+                    Arrays.asList(TOOL_CREATE_MAINTENANCE, TOOL_ACCEPT_ALERT)));
 
     private static final Gson GSON = new Gson();
 
@@ -49,6 +53,9 @@ public class McpToolRegistry {
 
     @Autowired
     private MaintenanceTools maintenanceTools;
+
+    @Autowired
+    private AlertActionTools alertActionTools;
 
     @Autowired
     private RagProperties ragProperties;
@@ -124,7 +131,21 @@ public class McpToolRegistry {
     public JsonArray listLlmTools() {
         JsonArray tools = listTools();
         tools.add(createMaintenanceToolDef());
+        tools.add(acceptAlertToolDef());
         return tools;
+    }
+
+    /** accept_alert 的工具定义：接手指定告警，接手人为当前 API 用户。 */
+    private JsonObject acceptAlertToolDef() {
+        return tool(TOOL_ACCEPT_ALERT,
+                "接手指定告警（接手人为当前 API 用户）。仅『未接手』状态的告警可接手；"
+                        + "必须在向用户回显将接手的告警并取得明确确认后才调用。",
+                "{"
+                        + "\"type\":\"object\","
+                        + "\"properties\":{"
+                        + "\"incidentId\":{\"type\":\"string\",\"description\":\"要接手的告警ID\"}"
+                        + "},"
+                        + "\"required\":[\"incidentId\"]}");
     }
 
     /** create_maintenance 的工具定义（name/description/inputSchema），内嵌字段与取值约束供 LLM 填参。 */
@@ -159,7 +180,7 @@ public class McpToolRegistry {
      *
      * @param name      工具名
      * @param arguments 参数对象（可能为 null）
-     * @return 工具结果对象（AlertCount / List&lt;AlertBrief&gt; / AlertBrief / MaintenanceCreateResult），由调用方序列化
+     * @return 工具结果对象（AlertCount / List&lt;AlertBrief&gt; / AlertBrief / MaintenanceCreateResult / AlertActionResult），由调用方序列化
      * @throws IllegalArgumentException 工具名未知或必填参数缺失
      */
     public Object callTool(String name, JsonObject arguments) {
@@ -191,6 +212,8 @@ public class McpToolRegistry {
                         getInt(args, "topK", 5));
             case TOOL_CREATE_MAINTENANCE:
                 return maintenanceTools.createMaintenance(args);
+            case TOOL_ACCEPT_ALERT:
+                return alertActionTools.acceptAlert(args);
             default:
                 throw new IllegalArgumentException("未知工具：" + name);
         }
