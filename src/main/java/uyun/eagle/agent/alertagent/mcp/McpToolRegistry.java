@@ -41,12 +41,15 @@ public class McpToolRegistry {
     static final String TOOL_ADD_REMARK = "add_remark";
     static final String TOOL_TRANSFER_ALERT = "transfer_alert";
     static final String TOOL_FIND_USER = "find_user";
+    static final String TOOL_CLOSE_ALERT = "close_alert";
+    static final String TOOL_RESOLVE_ALERT = "resolve_alert";
 
     /** 写操作工具名集合：仅在 Chat（LLM）路径可用，MCP 一律拒绝暴露与调用。 */
     private static final Set<String> WRITE_TOOLS =
             Collections.unmodifiableSet(new HashSet<>(
                     Arrays.asList(TOOL_CREATE_MAINTENANCE, TOOL_ACCEPT_ALERT,
-                            TOOL_ADD_REMARK, TOOL_TRANSFER_ALERT)));
+                            TOOL_ADD_REMARK, TOOL_TRANSFER_ALERT,
+                            TOOL_CLOSE_ALERT, TOOL_RESOLVE_ALERT)));
 
     private static final Gson GSON = new Gson();
 
@@ -144,7 +147,7 @@ public class McpToolRegistry {
 
     /**
      * 返回供 LLM（Chat 路径）使用的工具清单：只读工具 + 写操作工具
-     * （create_maintenance / accept_alert / add_remark / transfer_alert）。
+     * （create_maintenance / accept_alert / add_remark / transfer_alert / close_alert / resolve_alert）。
      *
      * <p>写工具只在此暴露给 LLM，不进入 {@link #listTools()}（MCP 用），从而实现「写操作仅 Chat 可用」。
      * find_user 为只读，已在 {@link #listTools()} 中，MCP 与 Chat 均可用。
@@ -155,7 +158,38 @@ public class McpToolRegistry {
         tools.add(acceptAlertToolDef());
         tools.add(addRemarkToolDef());
         tools.add(transferAlertToolDef());
+        tools.add(closeAlertToolDef());
+        tools.add(resolveAlertToolDef());
         return tools;
+    }
+
+    /** close_alert 的工具定义：关闭告警（不可逆终态），必须带关闭原因。 */
+    private JsonObject closeAlertToolDef() {
+        return tool(TOOL_CLOSE_ALERT,
+                "关闭指定告警（不可逆终态操作）。必须提供关闭原因 closeMessage（不可编造，需向用户问明）。"
+                        + "调用前必须向用户回显目标告警与关闭原因并取得明确确认；批量关闭须先列出将关闭的清单再整体确认。",
+                "{"
+                        + "\"type\":\"object\","
+                        + "\"properties\":{"
+                        + "\"incidentId\":{\"type\":\"string\",\"description\":\"要关闭的告警ID\"},"
+                        + "\"closeMessage\":{\"type\":\"string\",\"description\":\"关闭原因，必填，由用户提供\"}"
+                        + "},"
+                        + "\"required\":[\"incidentId\",\"closeMessage\"]}");
+    }
+
+    /** resolve_alert 的工具定义：解决告警（不可逆终态），必须带解决说明；未接手等状态会被 Alert 拒绝。 */
+    private JsonObject resolveAlertToolDef() {
+        return tool(TOOL_RESOLVE_ALERT,
+                "解决指定告警（不可逆终态操作）。必须提供解决说明 resolveMessage（不可编造，需向用户问明）。"
+                        + "告警须先被接手/处理中才能解决，未接手会被 Alert 拒绝，此时应引导用户先接手。"
+                        + "调用前必须向用户回显目标告警与解决说明并取得明确确认；批量解决须先列出清单再整体确认。",
+                "{"
+                        + "\"type\":\"object\","
+                        + "\"properties\":{"
+                        + "\"incidentId\":{\"type\":\"string\",\"description\":\"要解决的告警ID\"},"
+                        + "\"resolveMessage\":{\"type\":\"string\",\"description\":\"解决说明，必填，由用户提供\"}"
+                        + "},"
+                        + "\"required\":[\"incidentId\",\"resolveMessage\"]}");
     }
 
     /** add_remark 的工具定义：给指定告警添加备注，备注人为当前 API 用户。 */
@@ -272,6 +306,10 @@ public class McpToolRegistry {
                 return alertActionTools.transferAlert(args);
             case TOOL_FIND_USER:
                 return userQueryTools.findUser(args);
+            case TOOL_CLOSE_ALERT:
+                return alertActionTools.closeAlert(args);
+            case TOOL_RESOLVE_ALERT:
+                return alertActionTools.resolveAlert(args);
             default:
                 throw new IllegalArgumentException("未知工具：" + name);
         }

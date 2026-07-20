@@ -170,6 +170,56 @@ public class AlertOpenApiClient {
     }
 
     /**
+     * 告警关闭（写操作，不可逆终态）。
+     *
+     * <p>对应 Alert 端 {@code POST {OPEN_API}v2/incident/closeIncidentByIncidentId}。apikey 走 query，
+     * 请求体 {@code {"incidentId":"...","closeMessage":"..."}}（对应后端 IncidentCloseParam）。
+     * Alert 端会校验：告警已处于「已关闭」状态时返回失败。
+     *
+     * <p>返回体同接手：以 {@code statusCode}（200/500）表示成败，判定见 {@code AlertActionTools}。
+     *
+     * @param incidentId   告警 ID
+     * @param closeMessage 关闭说明（必填）
+     * @return Alert 返回的原始 JSON（含 statusCode/message）
+     */
+    public JsonObject closeIncident(String incidentId, String closeMessage) {
+        String url = UriComponentsBuilder
+                .fromHttpUrl(alertProperties.getBaseUrl() + "/v2/incident/closeIncidentByIncidentId")
+                .queryParam("apikey", alertProperties.getApikey())
+                .build(true)
+                .toUriString();
+        JsonObject body = new JsonObject();
+        body.addProperty("incidentId", incidentId);
+        body.addProperty("closeMessage", closeMessage);
+        return postForJson(url, GSON.toJson(body), "告警关闭");
+    }
+
+    /**
+     * 告警解决（写操作，不可逆终态）。
+     *
+     * <p>对应 Alert 端 {@code POST {OPEN_API}v2/incident/resolveByIncidentId}。apikey 走 query，
+     * 请求体 {@code {"incidentId":"...","resolveMessage":"..."}}。解决人取自 apikey 对应用户；
+     * Alert 端有状态机校验，未接手/状态不允许时返回失败。
+     *
+     * <p>返回体同接手：以 {@code statusCode}（200/500）表示成败，判定见 {@code AlertActionTools}。
+     *
+     * @param incidentId     告警 ID
+     * @param resolveMessage 解决说明（必填）
+     * @return Alert 返回的原始 JSON（含 statusCode/message）
+     */
+    public JsonObject resolveIncident(String incidentId, String resolveMessage) {
+        String url = UriComponentsBuilder
+                .fromHttpUrl(alertProperties.getBaseUrl() + "/v2/incident/resolveByIncidentId")
+                .queryParam("apikey", alertProperties.getApikey())
+                .build(true)
+                .toUriString();
+        JsonObject body = new JsonObject();
+        body.addProperty("incidentId", incidentId);
+        body.addProperty("resolveMessage", resolveMessage);
+        return postForJson(url, GSON.toJson(body), "告警解决");
+    }
+
+    /**
      * 查询用户（只读）。
      *
      * <p>对应 Alert 端 {@code GET {OPEN_API}v2/user/query}，按姓名/账号关键字模糊查当前租户用户，

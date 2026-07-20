@@ -10,8 +10,9 @@ import uyun.eagle.agent.alertagent.tool.dto.AlertActionResult;
 /**
  * 告警处置写操作 Tool（Phase 2，alert-action）。
  *
- * <p>第一批仅提供「接手」。走 Alert 端 {@code POST /v2/incident/receiveByIncidentId}，
- * 接手人为 apikey 对应的用户，无需调用方指定。后续备注/转派/关闭/解决等动作可在本类扩展。
+ * <p>已提供：接手、备注、转派、关闭、解决。均走 Alert 端 {@code POST /v2/incident/*}，
+ * 操作人为 apikey 对应的用户，无需调用方指定（转派需 toUserId）。关闭/解决为不可逆终态，
+ * 且有状态机前置（如未接手不可解决），失败原因由 Alert 返回、如实转告用户。
  *
  * <p>安全约束：该能力仅在 Chat（LLM 编排）路径暴露，不通过 MCP 暴露给外部客户端；
  * 且约定由 LLM 在取得用户明确确认后才调用（见 System Prompt）。本类只做参数校验、
@@ -141,7 +142,85 @@ public class AlertActionTools {
         return result;
     }
 
-    /** 成功判定：接手/备注/转派接口均以 statusCode==200 表示成功（无 result/errCode 字段）。 */
+    /**
+     * 关闭告警（不可逆终态）。
+     *
+     * <p>必填：{@code incidentId}、{@code closeMessage}（关闭原因，不可省略/编造）。
+     * Alert 端会校验状态：已关闭的告警会返回失败。
+     *
+     * @param args 工具参数，需含 incidentId、closeMessage
+     * @return 关闭结果
+     * @throws IllegalArgumentException 必填缺失或 Alert 返回失败时抛出
+     */
+    public AlertActionResult closeAlert(JsonObject args) {
+        JsonObject in = args == null ? new JsonObject() : args;
+
+        String incidentId = getString(in, "incidentId");
+        if (isBlank(incidentId)) {
+            throw new IllegalArgumentException("缺少必填参数：incidentId（要关闭的告警ID）");
+        }
+        String closeMessage = getString(in, "closeMessage");
+        if (isBlank(closeMessage)) {
+            throw new IllegalArgumentException("缺少必填参数：closeMessage（关闭原因）");
+        }
+        incidentId = incidentId.trim();
+
+        JsonObject rsp = alertOpenApiClient.closeIncident(incidentId, closeMessage.trim());
+
+        boolean success = isSuccess(rsp);
+        String message = getString(rsp, "message");
+
+        AlertActionResult result = new AlertActionResult();
+        result.setAction("关闭");
+        result.setIncidentId(incidentId);
+        result.setMessage(message);
+        result.setSuccess(success);
+        if (!success) {
+            throw new IllegalArgumentException("关闭失败：" + (isBlank(message) ? "Alert 返回未成功" : message));
+        }
+        return result;
+    }
+
+    /**
+     * 解决告警（不可逆终态）。
+     *
+     * <p>必填：{@code incidentId}、{@code resolveMessage}（解决说明，不可省略/编造）。
+     * Alert 端有状态机校验：未接手等状态不允许直接解决时会返回失败原因。
+     *
+     * @param args 工具参数，需含 incidentId、resolveMessage
+     * @return 解决结果
+     * @throws IllegalArgumentException 必填缺失或 Alert 返回失败时抛出
+     */
+    public AlertActionResult resolveAlert(JsonObject args) {
+        JsonObject in = args == null ? new JsonObject() : args;
+
+        String incidentId = getString(in, "incidentId");
+        if (isBlank(incidentId)) {
+            throw new IllegalArgumentException("缺少必填参数：incidentId（要解决的告警ID）");
+        }
+        String resolveMessage = getString(in, "resolveMessage");
+        if (isBlank(resolveMessage)) {
+            throw new IllegalArgumentException("缺少必填参数：resolveMessage（解决说明）");
+        }
+        incidentId = incidentId.trim();
+
+        JsonObject rsp = alertOpenApiClient.resolveIncident(incidentId, resolveMessage.trim());
+
+        boolean success = isSuccess(rsp);
+        String message = getString(rsp, "message");
+
+        AlertActionResult result = new AlertActionResult();
+        result.setAction("解决");
+        result.setIncidentId(incidentId);
+        result.setMessage(message);
+        result.setSuccess(success);
+        if (!success) {
+            throw new IllegalArgumentException("解决失败：" + (isBlank(message) ? "Alert 返回未成功" : message));
+        }
+        return result;
+    }
+
+    /** 成功判定：接手/备注/转派/关闭/解决接口均以 statusCode==200 表示成功（无 result/errCode 字段）。 */
     private static boolean isSuccess(JsonObject rsp) {
         if (rsp == null) {
             return false;
