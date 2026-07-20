@@ -64,7 +64,84 @@ public class AlertActionTools {
         return result;
     }
 
-    /** 成功判定：接手接口以 statusCode==200 表示成功（无 result/errCode 字段）。 */
+    /**
+     * 给告警添加备注。
+     *
+     * <p>必填：{@code incidentId}、{@code remark}。备注人为当前 API 用户。
+     *
+     * @param args 工具参数，需含 incidentId、remark
+     * @return 备注结果
+     * @throws IllegalArgumentException 必填缺失或 Alert 返回失败时抛出
+     */
+    public AlertActionResult addRemark(JsonObject args) {
+        JsonObject in = args == null ? new JsonObject() : args;
+
+        String incidentId = getString(in, "incidentId");
+        if (isBlank(incidentId)) {
+            throw new IllegalArgumentException("缺少必填参数：incidentId（要备注的告警ID）");
+        }
+        String remark = getString(in, "remark");
+        if (isBlank(remark)) {
+            throw new IllegalArgumentException("缺少必填参数：remark（备注内容）");
+        }
+        incidentId = incidentId.trim();
+
+        JsonObject rsp = alertOpenApiClient.remarkIncident(incidentId, remark.trim());
+
+        boolean success = isSuccess(rsp);
+        String message = getString(rsp, "message");
+
+        AlertActionResult result = new AlertActionResult();
+        result.setAction("备注");
+        result.setIncidentId(incidentId);
+        result.setMessage(message);
+        result.setSuccess(success);
+        if (!success) {
+            throw new IllegalArgumentException("备注失败：" + (isBlank(message) ? "Alert 返回未成功" : message));
+        }
+        return result;
+    }
+
+    /**
+     * 转派告警给指定用户。
+     *
+     * <p>必填：{@code incidentId}、{@code toUserId}（由 find_user 解析得到）。
+     * 当前 API 用户须为该告警负责人或管理员，否则 Alert 端会返回失败。
+     *
+     * @param args 工具参数，需含 incidentId、toUserId
+     * @return 转派结果
+     * @throws IllegalArgumentException 必填缺失或 Alert 返回失败时抛出
+     */
+    public AlertActionResult transferAlert(JsonObject args) {
+        JsonObject in = args == null ? new JsonObject() : args;
+
+        String incidentId = getString(in, "incidentId");
+        if (isBlank(incidentId)) {
+            throw new IllegalArgumentException("缺少必填参数：incidentId（要转派的告警ID）");
+        }
+        String toUserId = getString(in, "toUserId");
+        if (isBlank(toUserId)) {
+            throw new IllegalArgumentException("缺少必填参数：toUserId（转派目标用户ID，先用 find_user 查得）");
+        }
+        incidentId = incidentId.trim();
+
+        JsonObject rsp = alertOpenApiClient.transferIncident(incidentId, toUserId.trim());
+
+        boolean success = isSuccess(rsp);
+        String message = getString(rsp, "message");
+
+        AlertActionResult result = new AlertActionResult();
+        result.setAction("转派");
+        result.setIncidentId(incidentId);
+        result.setMessage(message);
+        result.setSuccess(success);
+        if (!success) {
+            throw new IllegalArgumentException("转派失败：" + (isBlank(message) ? "Alert 返回未成功" : message));
+        }
+        return result;
+    }
+
+    /** 成功判定：接手/备注/转派接口均以 statusCode==200 表示成功（无 result/errCode 字段）。 */
     private static boolean isSuccess(JsonObject rsp) {
         if (rsp == null) {
             return false;

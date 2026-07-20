@@ -11,6 +11,7 @@ import uyun.eagle.agent.alertagent.tool.AlertActionTools;
 import uyun.eagle.agent.alertagent.tool.AlertQueryTools;
 import uyun.eagle.agent.alertagent.tool.KnowledgeSearchTools;
 import uyun.eagle.agent.alertagent.tool.MaintenanceTools;
+import uyun.eagle.agent.alertagent.tool.UserQueryTools;
 
 import java.util.Arrays;
 import java.util.Collections;
@@ -37,11 +38,15 @@ public class McpToolRegistry {
     static final String TOOL_SEARCH_KNOWLEDGE = "search_knowledge";
     static final String TOOL_CREATE_MAINTENANCE = "create_maintenance";
     static final String TOOL_ACCEPT_ALERT = "accept_alert";
+    static final String TOOL_ADD_REMARK = "add_remark";
+    static final String TOOL_TRANSFER_ALERT = "transfer_alert";
+    static final String TOOL_FIND_USER = "find_user";
 
     /** 写操作工具名集合：仅在 Chat（LLM）路径可用，MCP 一律拒绝暴露与调用。 */
     private static final Set<String> WRITE_TOOLS =
             Collections.unmodifiableSet(new HashSet<>(
-                    Arrays.asList(TOOL_CREATE_MAINTENANCE, TOOL_ACCEPT_ALERT)));
+                    Arrays.asList(TOOL_CREATE_MAINTENANCE, TOOL_ACCEPT_ALERT,
+                            TOOL_ADD_REMARK, TOOL_TRANSFER_ALERT)));
 
     private static final Gson GSON = new Gson();
 
@@ -56,6 +61,9 @@ public class McpToolRegistry {
 
     @Autowired
     private AlertActionTools alertActionTools;
+
+    @Autowired
+    private UserQueryTools userQueryTools;
 
     @Autowired
     private RagProperties ragProperties;
@@ -106,6 +114,17 @@ public class McpToolRegistry {
                         + "},"
                         + "\"required\":[\"incidentId\"]}"));
 
+        tools.add(tool(TOOL_FIND_USER,
+                "按姓名/账号关键字查询当前租户用户，返回候选用户（含 userId）。"
+                        + "转派告警前需先用它把人名解析成 userId。",
+                "{"
+                        + "\"type\":\"object\","
+                        + "\"properties\":{"
+                        + "\"keyword\":{\"type\":\"string\",\"description\":\"姓名或账号关键字，如『张三』\"},"
+                        + "\"limit\":{\"type\":\"integer\",\"description\":\"返回候选条数上限\",\"default\":20}"
+                        + "},"
+                        + "\"required\":[\"keyword\"]}"));
+
         // RAG 启用时才暴露知识检索工具（Phase 1d）
         if (ragProperties.isEnabled()) {
             tools.add(tool(TOOL_SEARCH_KNOWLEDGE,
@@ -124,15 +143,48 @@ public class McpToolRegistry {
     }
 
     /**
-     * 返回供 LLM（Chat 路径）使用的工具清单：只读工具 + 写操作工具（create_maintenance）。
+     * 返回供 LLM（Chat 路径）使用的工具清单：只读工具 + 写操作工具
+     * （create_maintenance / accept_alert / add_remark / transfer_alert）。
      *
      * <p>写工具只在此暴露给 LLM，不进入 {@link #listTools()}（MCP 用），从而实现「写操作仅 Chat 可用」。
+     * find_user 为只读，已在 {@link #listTools()} 中，MCP 与 Chat 均可用。
      */
     public JsonArray listLlmTools() {
         JsonArray tools = listTools();
         tools.add(createMaintenanceToolDef());
         tools.add(acceptAlertToolDef());
+        tools.add(addRemarkToolDef());
+        tools.add(transferAlertToolDef());
         return tools;
+    }
+
+    /** add_remark 的工具定义：给指定告警添加备注，备注人为当前 API 用户。 */
+    private JsonObject addRemarkToolDef() {
+        return tool(TOOL_ADD_REMARK,
+                "给指定告警添加备注（备注人为当前 API 用户）。"
+                        + "必须在向用户回显目标告警与备注内容并取得明确确认后才调用。",
+                "{"
+                        + "\"type\":\"object\","
+                        + "\"properties\":{"
+                        + "\"incidentId\":{\"type\":\"string\",\"description\":\"要备注的告警ID\"},"
+                        + "\"remark\":{\"type\":\"string\",\"description\":\"备注内容\"}"
+                        + "},"
+                        + "\"required\":[\"incidentId\",\"remark\"]}");
+    }
+
+    /** transfer_alert 的工具定义：把告警转派给指定用户，toUserId 需先由 find_user 解析得到。 */
+    private JsonObject transferAlertToolDef() {
+        return tool(TOOL_TRANSFER_ALERT,
+                "把指定告警转派给某用户。toUserId 必须先用 find_user 按人名查得；"
+                        + "若查到多个同名候选，须先向用户确认选哪个。"
+                        + "必须在向用户回显目标告警与接收人并取得明确确认后才调用。",
+                "{"
+                        + "\"type\":\"object\","
+                        + "\"properties\":{"
+                        + "\"incidentId\":{\"type\":\"string\",\"description\":\"要转派的告警ID\"},"
+                        + "\"toUserId\":{\"type\":\"string\",\"description\":\"转派目标用户ID（由 find_user 查得）\"}"
+                        + "},"
+                        + "\"required\":[\"incidentId\",\"toUserId\"]}");
     }
 
     /** accept_alert 的工具定义：接手指定告警，接手人为当前 API 用户。 */
@@ -180,7 +232,7 @@ public class McpToolRegistry {
      *
      * @param name      工具名
      * @param arguments 参数对象（可能为 null）
-     * @return 工具结果对象（AlertCount / List&lt;AlertBrief&gt; / AlertBrief / MaintenanceCreateResult / AlertActionResult），由调用方序列化
+     * @return 工具结果对象（AlertCount / List&lt;AlertBrief&gt; / AlertBrief / MaintenanceCreateResult / AlertActionResult / List&lt;UserBrief&gt;），由调用方序列化
      * @throws IllegalArgumentException 工具名未知或必填参数缺失
      */
     public Object callTool(String name, JsonObject arguments) {
@@ -214,6 +266,12 @@ public class McpToolRegistry {
                 return maintenanceTools.createMaintenance(args);
             case TOOL_ACCEPT_ALERT:
                 return alertActionTools.acceptAlert(args);
+            case TOOL_ADD_REMARK:
+                return alertActionTools.addRemark(args);
+            case TOOL_TRANSFER_ALERT:
+                return alertActionTools.transferAlert(args);
+            case TOOL_FIND_USER:
+                return userQueryTools.findUser(args);
             default:
                 throw new IllegalArgumentException("未知工具：" + name);
         }

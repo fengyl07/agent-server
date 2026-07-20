@@ -120,6 +120,81 @@ public class AlertOpenApiClient {
         return postForJson(url, GSON.toJson(body), "告警接手");
     }
 
+    /**
+     * 告警备注（写操作）。
+     *
+     * <p>对应 Alert 端 {@code POST {OPEN_API}v2/incident/remarkByIncidentId}。apikey 走 query，
+     * 请求体 {@code {"incidentId":"...","remark":"..."}}。备注人取自 apikey 对应用户。
+     *
+     * <p>返回体同接手：以 {@code statusCode}（200/500）表示成败，判定见 {@code AlertActionTools}。
+     *
+     * @param incidentId 告警 ID
+     * @param remark     备注内容
+     * @return Alert 返回的原始 JSON（含 statusCode/message）
+     */
+    public JsonObject remarkIncident(String incidentId, String remark) {
+        String url = UriComponentsBuilder
+                .fromHttpUrl(alertProperties.getBaseUrl() + "/v2/incident/remarkByIncidentId")
+                .queryParam("apikey", alertProperties.getApikey())
+                .build(true)
+                .toUriString();
+        JsonObject body = new JsonObject();
+        body.addProperty("incidentId", incidentId);
+        body.addProperty("remark", remark);
+        return postForJson(url, GSON.toJson(body), "告警备注");
+    }
+
+    /**
+     * 告警转派（写操作）。
+     *
+     * <p>对应 Alert 端 {@code POST {OPEN_API}v2/incident/shiftByIncidentId}。apikey 走 query，
+     * 请求体 {@code {"incidentId":"...","toUserId":"..."}}。当前 apikey 用户须为该告警负责人或管理员，
+     * 否则 Alert 端返回失败（非本人告警不可操作）。
+     *
+     * <p>返回体同接手：以 {@code statusCode}（200/500）表示成败，判定见 {@code AlertActionTools}。
+     *
+     * @param incidentId 告警 ID
+     * @param toUserId   转派目标用户 ID
+     * @return Alert 返回的原始 JSON（含 statusCode/message）
+     */
+    public JsonObject transferIncident(String incidentId, String toUserId) {
+        String url = UriComponentsBuilder
+                .fromHttpUrl(alertProperties.getBaseUrl() + "/v2/incident/shiftByIncidentId")
+                .queryParam("apikey", alertProperties.getApikey())
+                .build(true)
+                .toUriString();
+        JsonObject body = new JsonObject();
+        body.addProperty("incidentId", incidentId);
+        body.addProperty("toUserId", toUserId);
+        return postForJson(url, GSON.toJson(body), "告警转派");
+    }
+
+    /**
+     * 查询用户（只读）。
+     *
+     * <p>对应 Alert 端 {@code GET {OPEN_API}v2/user/query}，按姓名/账号关键字模糊查当前租户用户，
+     * 供转派前把「人名」解析成 userId。apikey 走 query。
+     *
+     * <p>返回体为 ResultMessage 结构（{@code result}/{@code data}），与接手/备注不同，
+     * 解析见 {@code UserQueryTools}。
+     *
+     * @param keyword  姓名/账号关键字（可空，空则返回租户用户列表）
+     * @param pageNo   页码（从 1 开始）
+     * @param pageSize 每页条数
+     * @return Alert 返回的原始 JSON（含 result/data）
+     */
+    public JsonObject queryUsers(String keyword, int pageNo, int pageSize) {
+        UriComponentsBuilder builder = UriComponentsBuilder
+                .fromHttpUrl(alertProperties.getBaseUrl() + "/v2/user/query")
+                .queryParam("apikey", alertProperties.getApikey())
+                .queryParam("pageNo", pageNo <= 0 ? 1 : pageNo)
+                .queryParam("pageSize", pageSize <= 0 ? 20 : pageSize);
+        if (keyword != null && !keyword.trim().isEmpty()) {
+            builder.queryParam("keyword", encode(keyword.trim()));
+        }
+        return getForJson(builder.build(true).toUriString(), "用户查询");
+    }
+
     private JsonObject getForJson(String url, String action) {
         try {
             log.info("[AlertOpenApi] {} -> {}", action, maskApikey(url));

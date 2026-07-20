@@ -51,6 +51,24 @@ public final class AlertAgentPrompts {
                     + "- 用户要求“把某一批告警都接手”时，逐条回显并接手（每条都需确认），不要一次性臆造批量结果。";
 
     /**
+     * 告警备注与转派（写操作）行为约束。均采用「回显确认 → 确认后才执行」两阶段流程；
+     * 转派前必须先用 find_user 把人名解析成 userId。
+     *
+     * <p>声明顺序需在 {@link #SYSTEM_PROMPT} 之前，避免静态字段的非法前向引用。
+     */
+    static final String REMARK_TRANSFER_GUIDE =
+            "【告警备注】你可以用 add_remark 工具给告警加备注：\n"
+                    + "1) 必须有告警ID（incidentId）与备注内容（remark）。缺告警ID时先用 query_alerts 查候选并向用户确认，不要臆造ID。\n"
+                    + "2) 调用前先【回显】目标告警与备注内容并【明确询问是否确认】，用户明确确认后才调用 add_remark；成功后简洁回报。\n"
+                    + "【转派告警】你可以用 transfer_alert 工具把告警转派给他人，但必须严格遵守：\n"
+                    + "1) 转派需要目标用户ID（toUserId）。用户通常只说人名（如“转给张三”），你【必须】先用 find_user 按人名查候选，"
+                    + "拿到 userId 后才能转派，绝对不要凭空编造 userId。\n"
+                    + "2) 若 find_user 返回多个同名候选，先列出候选（姓名/账号）请用户选定具体是哪一个；若一个都没查到，如实告知“未找到该用户”，不要继续转派。\n"
+                    + "3) 确定唯一目标用户后，【回显】将要转派的告警与接收人（姓名/账号）并【明确询问是否确认】，"
+                    + "用户明确确认后才调用 transfer_alert。成功后简洁回报（已转派的告警、接收人）。\n"
+                    + "4) 转派要求当前账号对该告警有操作权限；若 Alert 返回失败（如非本人告警/无权限），如实转告用户，不要假装成功。";
+
+    /**
      * 当前时间引导语前缀。运行时拼接实际时间后置于 system 提示开头，供模型计算口语时间。
      */
     public static final String CURRENT_TIME_PREFIX = "当前时间：";
@@ -63,16 +81,19 @@ public final class AlertAgentPrompts {
                     + "- 统计今天告警数量用 count_today_alerts；\n"
                     + "- 查询告警列表（可按对象名、状态过滤）用 query_alerts，默认只看未关闭、按最近发生时间倒序；\n"
                     + "- 查单条告警详情用 get_alert_detail（需要告警ID）；\n"
-                    + "- 找相似告警用 find_similar_alerts（需要告警ID）。\n"
+                    + "- 找相似告警用 find_similar_alerts（需要告警ID）；\n"
+                    + "- 按人名/账号查用户（转派前解析 userId）用 find_user。\n"
                     + "当需要运维知识（告警状态/级别含义、处置 SOP、排查步骤等）来研判或给建议时，"
                     + "优先调用 search_knowledge 检索知识库，再结合检索到的片段作答，并简要标注来源；"
                     + "若该工具不可用或未检索到相关内容，则基于通用运维经验谨慎作答并说明依据。\n"
                     + "若工具返回为空，如实说明“未查询到”，不要臆造。"
                     + "回答使用简体中文，简洁、结构化；做处置建议时要说明依据，并提示这是建议而非已执行的操作。"
-                    + "涉及转派、关闭、解决等尚未开放的写操作时，说明当前不具备该能力，不要假装已执行。\n"
+                    + "涉及关闭、解决等尚未开放的写操作时，说明当前不具备该能力，不要假装已执行。\n"
                     + MAINTENANCE_GUIDE
                     + "\n"
-                    + ACCEPT_GUIDE;
+                    + ACCEPT_GUIDE
+                    + "\n"
+                    + REMARK_TRANSFER_GUIDE;
 
     /** 知识库注入引导语（拼在 system 中知识文本之前，明确其用途与冲突时的优先级） */
     public static final String KNOWLEDGE_PREAMBLE =
