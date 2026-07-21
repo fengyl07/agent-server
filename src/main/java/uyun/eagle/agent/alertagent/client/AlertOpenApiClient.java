@@ -1,6 +1,7 @@
 package uyun.eagle.agent.alertagent.client;
 
 import com.google.gson.Gson;
+import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -245,6 +246,40 @@ public class AlertOpenApiClient {
         return getForJson(builder.build(true).toUriString(), "用户查询");
     }
 
+    /**
+     * 告警分组统计（只读）。
+     *
+     * <p>对应 Alert 端 {@code GET {OPEN_API}v2/incident/statistics}，按 {@code groupBy} 指定维度分组计数。
+     * apikey 走 query。返回体为 JSON 数组 {@code [{"value":"...","count":N}, ...]}，
+     * 其中 value 为分组值（severity/status 维度为数字码），count 为该组告警数。
+     *
+     * @param groupBy 分组维度字段：severity/status/source/classCode/tags/hour/dayOfMonth/week 等
+     * @param begin   起始时间（毫秒时间戳，可空表示不限）
+     * @param end     结束时间（毫秒时间戳，可空表示不限）
+     * @param top     取前 N 组（可空或 &lt;=0 时不下传）
+     * @param sort    排序方向：DESC/ASC（可空）
+     * @return Alert 返回的原始 JSON 数组（每项含 value/count）
+     */
+    public JsonArray statistics(String groupBy, Long begin, Long end, Integer top, String sort) {
+        UriComponentsBuilder builder = UriComponentsBuilder
+                .fromHttpUrl(alertProperties.getBaseUrl() + "/v2/incident/statistics")
+                .queryParam("apikey", alertProperties.getApikey())
+                .queryParam("groupBy", groupBy);
+        if (begin != null) {
+            builder.queryParam("begin", begin);
+        }
+        if (end != null) {
+            builder.queryParam("end", end);
+        }
+        if (top != null && top > 0) {
+            builder.queryParam("top", top);
+        }
+        if (sort != null && !sort.trim().isEmpty()) {
+            builder.queryParam("sort", sort.trim());
+        }
+        return getForJsonArray(builder.build(true).toUriString(), "告警分组统计");
+    }
+
     private JsonObject getForJson(String url, String action) {
         try {
             log.info("[AlertOpenApi] {} -> {}", action, maskApikey(url));
@@ -253,6 +288,20 @@ public class AlertOpenApiClient {
                 return new JsonObject();
             }
             return GSON.fromJson(rsp, JsonObject.class);
+        } catch (Exception e) {
+            log.error("[AlertOpenApi] {} 失败: {}", action, e.getMessage());
+            throw new AlertApiException(action + "失败：" + e.getMessage(), e);
+        }
+    }
+
+    private JsonArray getForJsonArray(String url, String action) {
+        try {
+            log.info("[AlertOpenApi] {} -> {}", action, maskApikey(url));
+            String rsp = restTemplate.getForObject(url, String.class);
+            if (rsp == null || rsp.isEmpty()) {
+                return new JsonArray();
+            }
+            return GSON.fromJson(rsp, JsonArray.class);
         } catch (Exception e) {
             log.error("[AlertOpenApi] {} 失败: {}", action, e.getMessage());
             throw new AlertApiException(action + "失败：" + e.getMessage(), e);

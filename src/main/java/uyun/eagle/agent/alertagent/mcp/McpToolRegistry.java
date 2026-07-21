@@ -11,6 +11,7 @@ import uyun.eagle.agent.alertagent.tool.AlertActionTools;
 import uyun.eagle.agent.alertagent.tool.AlertQueryTools;
 import uyun.eagle.agent.alertagent.tool.KnowledgeSearchTools;
 import uyun.eagle.agent.alertagent.tool.MaintenanceTools;
+import uyun.eagle.agent.alertagent.tool.StatisticsTools;
 import uyun.eagle.agent.alertagent.tool.UserQueryTools;
 
 import java.util.Arrays;
@@ -35,6 +36,7 @@ public class McpToolRegistry {
     static final String TOOL_QUERY = "query_alerts";
     static final String TOOL_DETAIL = "get_alert_detail";
     static final String TOOL_SIMILAR = "find_similar_alerts";
+    static final String TOOL_STATISTICS = "alert_statistics";
     static final String TOOL_SEARCH_KNOWLEDGE = "search_knowledge";
     static final String TOOL_CREATE_MAINTENANCE = "create_maintenance";
     static final String TOOL_ACCEPT_ALERT = "accept_alert";
@@ -67,6 +69,9 @@ public class McpToolRegistry {
 
     @Autowired
     private UserQueryTools userQueryTools;
+
+    @Autowired
+    private StatisticsTools statisticsTools;
 
     @Autowired
     private RagProperties ragProperties;
@@ -116,6 +121,18 @@ public class McpToolRegistry {
                         + "\"topN\":{\"type\":\"integer\",\"description\":\"返回条数\",\"default\":10}"
                         + "},"
                         + "\"required\":[\"incidentId\"]}"));
+
+        tools.add(tool(TOOL_STATISTICS,
+                "按维度对告警分组统计数量（TOP 排行）。用于回答『各级别告警多少』『哪类/哪个来源告警最多』"
+                        + "『今天告警按小时分布』等分析类问题。返回按数量降序的分组结果，需据此总结成分析结论。",
+                "{"
+                        + "\"type\":\"object\","
+                        + "\"properties\":{"
+                        + "\"groupBy\":{\"type\":\"string\",\"description\":\"统计维度：级别severity/状态status/来源source/类型classCode/标签tags/小时hour/日期dayOfMonth/星期week\"},"
+                        + "\"timeRange\":{\"type\":\"string\",\"description\":\"时间范围：today今天/yesterday昨天/last7days近7天/last30days近30天；不传=不限时间\"},"
+                        + "\"topN\":{\"type\":\"integer\",\"description\":\"返回前 N 组\",\"default\":10}"
+                        + "},"
+                        + "\"required\":[\"groupBy\"]}"));
 
         tools.add(tool(TOOL_FIND_USER,
                 "按姓名/账号关键字查询当前租户用户，返回候选用户（含 userId）。"
@@ -292,6 +309,13 @@ public class McpToolRegistry {
                 return alertQueryTools.findSimilarAlerts(
                         requireString(args, "incidentId"),
                         getInt(args, "topN", 10));
+            case TOOL_STATISTICS:
+                return statisticsTools.statistics(
+                        requireString(args, "groupBy"),
+                        getString(args, "timeRange"),
+                        getLongOrNull(args, "begin"),
+                        getLongOrNull(args, "end"),
+                        getInt(args, "topN", 10));
             case TOOL_SEARCH_KNOWLEDGE:
                 return knowledgeSearchTools.searchKnowledge(
                         requireString(args, "query"),
@@ -365,6 +389,21 @@ public class McpToolRegistry {
                 return Integer.parseInt(o.get(key).getAsString().trim());
             } catch (Exception ignored) {
                 return defaultValue;
+            }
+        }
+    }
+
+    private static Long getLongOrNull(JsonObject o, String key) {
+        if (o == null || !o.has(key) || o.get(key).isJsonNull()) {
+            return null;
+        }
+        try {
+            return o.get(key).getAsLong();
+        } catch (Exception e) {
+            try {
+                return Long.parseLong(o.get(key).getAsString().trim());
+            } catch (Exception ignored) {
+                return null;
             }
         }
     }
