@@ -221,6 +221,29 @@ public class AlertOpenApiClient {
     }
 
     /**
+     * 创建关联规则（写操作）。
+     *
+     * <p>对应 Alert 端 {@code POST {OPEN_API}v2/rule/createRule}，完整路径 {baseUrl}/v2/rule/createRule。
+     * apikey 作为 query 参数传递（Alert 端 {@code RuleOpenController} 通过 request.getParameter 读取）。
+     * 请求体为 {@code RuleVO} 的 JSON（含 rule 与 action 两部分）。
+     *
+     * <p>注意：该接口成功时直接返回<b>纯文本的规则 ID 字符串</b>（24 位 ObjectId），
+     * 不是 JSON 对象，故这里用 {@link #postForString} 取原始返回；失败时 Alert 端抛异常，
+     * RestTemplate 会收到非 2xx 并转成 {@link AlertApiException}。
+     *
+     * @param bodyJson RuleVO 的 JSON 字符串
+     * @return 新建规则的 ID（Alert 返回的原始文本）
+     */
+    public String createRule(String bodyJson) {
+        String url = UriComponentsBuilder
+                .fromHttpUrl(alertProperties.getBaseUrl() + "/v2/rule/createRule")
+                .queryParam("apikey", alertProperties.getApikey())
+                .build(true)
+                .toUriString();
+        return postForString(url, bodyJson, "关闭规则创建");
+    }
+
+    /**
      * 查询用户（只读）。
      *
      * <p>对应 Alert 端 {@code GET {OPEN_API}v2/user/query}，按姓名/账号关键字模糊查当前租户用户，
@@ -319,6 +342,22 @@ public class AlertOpenApiClient {
                 return new JsonObject();
             }
             return GSON.fromJson(rsp, JsonObject.class);
+        } catch (Exception e) {
+            log.error("[AlertOpenApi] {} 失败: {}", action, e.getMessage());
+            throw new AlertApiException(action + "失败：" + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * POST 并返回原始文本响应（用于返回体不是 JSON 的接口，如 createRule 返回纯 ruleId）。
+     */
+    private String postForString(String url, String bodyJson, String action) {
+        try {
+            log.info("[AlertOpenApi] {} -> {}", action, maskApikey(url));
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_JSON);
+            HttpEntity<String> entity = new HttpEntity<>(bodyJson, headers);
+            return restTemplate.postForObject(url, entity, String.class);
         } catch (Exception e) {
             log.error("[AlertOpenApi] {} 失败: {}", action, e.getMessage());
             throw new AlertApiException(action + "失败：" + e.getMessage(), e);

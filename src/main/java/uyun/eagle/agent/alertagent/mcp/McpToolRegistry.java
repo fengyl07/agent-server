@@ -11,6 +11,7 @@ import uyun.eagle.agent.alertagent.tool.AlertActionTools;
 import uyun.eagle.agent.alertagent.tool.AlertQueryTools;
 import uyun.eagle.agent.alertagent.tool.KnowledgeSearchTools;
 import uyun.eagle.agent.alertagent.tool.MaintenanceTools;
+import uyun.eagle.agent.alertagent.tool.RuleTools;
 import uyun.eagle.agent.alertagent.tool.StatisticsTools;
 import uyun.eagle.agent.alertagent.tool.UserQueryTools;
 
@@ -45,13 +46,15 @@ public class McpToolRegistry {
     static final String TOOL_FIND_USER = "find_user";
     static final String TOOL_CLOSE_ALERT = "close_alert";
     static final String TOOL_RESOLVE_ALERT = "resolve_alert";
+    static final String TOOL_CREATE_CLOSE_RULE = "create_close_rule";
 
     /** 写操作工具名集合：仅在 Chat（LLM）路径可用，MCP 一律拒绝暴露与调用。 */
     private static final Set<String> WRITE_TOOLS =
             Collections.unmodifiableSet(new HashSet<>(
                     Arrays.asList(TOOL_CREATE_MAINTENANCE, TOOL_ACCEPT_ALERT,
                             TOOL_ADD_REMARK, TOOL_TRANSFER_ALERT,
-                            TOOL_CLOSE_ALERT, TOOL_RESOLVE_ALERT)));
+                            TOOL_CLOSE_ALERT, TOOL_RESOLVE_ALERT,
+                            TOOL_CREATE_CLOSE_RULE)));
 
     private static final Gson GSON = new Gson();
 
@@ -72,6 +75,9 @@ public class McpToolRegistry {
 
     @Autowired
     private StatisticsTools statisticsTools;
+
+    @Autowired
+    private RuleTools ruleTools;
 
     @Autowired
     private RagProperties ragProperties;
@@ -177,7 +183,33 @@ public class McpToolRegistry {
         tools.add(transferAlertToolDef());
         tools.add(closeAlertToolDef());
         tools.add(resolveAlertToolDef());
+        tools.add(createCloseRuleToolDef());
         return tools;
+    }
+
+    /** create_close_rule 的工具定义：创建「告警关闭」关联规则，命中条件的告警自动关闭，默认创建即启用。 */
+    private JsonObject createCloseRuleToolDef() {
+        return tool(TOOL_CREATE_CLOSE_RULE,
+                "创建一条『告警关闭』关联规则：以后新接收的告警只要命中条件，就自动置为已关闭。"
+                        + "适合『某类告警自动关闭/不再处理』的诉求。默认创建后立即启用（实时生效）。"
+                        + "必须在向用户回显规则名称、匹配条件、以及『将立即启用』并取得明确确认后才调用；"
+                        + "这是会影响后续所有告警的长期配置，不可编造条件。",
+                "{"
+                        + "\"type\":\"object\","
+                        + "\"properties\":{"
+                        + "\"name\":{\"type\":\"string\",\"description\":\"规则名称，必填，最多50字\"},"
+                        + "\"description\":{\"type\":\"string\",\"description\":\"规则描述，可选，缺省用规则名\"},"
+                        + "\"enabled\":{\"type\":\"boolean\",\"description\":\"是否创建后立即启用，默认 true\",\"default\":true},"
+                        + "\"ruleData\":{\"type\":\"object\",\"description\":\"匹配条件（命中则关闭）\",\"properties\":{"
+                        + "\"logic\":{\"type\":\"string\",\"enum\":[\"and\",\"or\"],\"description\":\"多条件关系，默认 and\"},"
+                        + "\"exprs\":{\"type\":\"array\",\"description\":\"条件列表，至少一条\",\"items\":{\"type\":\"object\",\"properties\":{"
+                        + "\"key\":{\"type\":\"string\",\"description\":\"字段：alias(告警名称)/severity(等级,数值)/appKey(来源)/entityName(对象名)/entityAddr(对象或IP)/description(描述)/tag(标签)/count(次数,数值)/status(状态,数值)\"},"
+                        + "\"opt\":{\"type\":\"string\",\"description\":\"字符串字段用 contain/notContain/equal/notEqual/startwith/endwith/matches；数值字段(severity/count/status)用 >、>=、==、<、=<、!=（小于等于写作 =<）\"},"
+                        + "\"val\":{\"type\":\"string\",\"description\":\"值。severity: 3紧急/2错误/1警告/0恢复；status: 0未接手/40已确认/150处理中/190已解决/255已关闭\"}"
+                        + "},\"required\":[\"key\",\"opt\",\"val\"]}}"
+                        + "},\"required\":[\"exprs\"]}"
+                        + "},"
+                        + "\"required\":[\"name\",\"ruleData\"]}");
     }
 
     /** close_alert 的工具定义：关闭告警（不可逆终态），必须带关闭原因。 */
@@ -334,6 +366,8 @@ public class McpToolRegistry {
                 return alertActionTools.closeAlert(args);
             case TOOL_RESOLVE_ALERT:
                 return alertActionTools.resolveAlert(args);
+            case TOOL_CREATE_CLOSE_RULE:
+                return ruleTools.createCloseRule(args);
             default:
                 throw new IllegalArgumentException("未知工具：" + name);
         }
